@@ -62,6 +62,10 @@ FileServer::FileServer(int port_number) {
     int new_socket;
     while ((new_socket = accept(sock, (struct sockaddr*)&addr, &addr_len)) >= 0) {
         // get, parse, handle client request
+
+        // figure out where we need to start a new thread
+
+        // figure out locks for shared buffers, or just don't have shared buffers
     }
 }
 
