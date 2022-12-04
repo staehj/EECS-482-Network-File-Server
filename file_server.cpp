@@ -5,68 +5,158 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
+#include <string>
 
 #include "exception.h"
 #include "fs_server.h"
+#include "helpers.h"
 
 
 FileServer::FileServer(int port_number) {
-
     // traverse from root (block 0)
     traverse_fs();
 
-    // Ohjun's TODO: set up socket to connect to fs (include listen)
-    struct sockaddr_in addr;
-    int sock;
-    int opt = 1;
-    socklen_t addr_len = sizeof(addr);
+    // run server
+    port = port_number;
+    if (run(30) == -1) {
+        std::cout << "Error: run failed\n";
+        exit(1);
+    }
+}
 
-    // socket
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        // TODO: handle error
-    }
 
-    // setsockopt
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
-        // TODO: handle error
-    }
+/**
+ * Receives a string message from the client and prints it to stdout.
+ *
+ * Parameters:
+ * 		connectionfd: 	File descriptor for a socket connection
+ * 				(e.g. the one returned by accept())
+ * Returns:
+ *		0 on success, -1 on failure.
+ */
+int handle_connection(int connectionfd, int sock) {
 
-    // bind
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (port_number == -1) {
-        if (getsockname(sock, (struct sockaddr*) &addr, &addr_len) < 0) {
-            // TODO: handle error
-        }
-        port_number = ntohs(addr.sin_port);
-    }
-    else {
-        addr.sin_port = htons(port_number);
-    }
+	printf("New connection %d\n", connectionfd);
 
-    if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        // TODO: handle error
-    }
+	char buf[MAX_MESSAGE_SIZE];
+	memset(buf, 0, sizeof(buf));
 
-    // listen
-    if (listen(sock, 30) < 0) {
-        // TODO: handle error
+	char data[FS_BLOCKSIZE];
+	memset(data, 0, sizeof(data));
+
+    // try {
+    //     receive_bytes(connectionfd, sock, msg);
+    // }
+    // catch (CUSTOMECEPTION) {
+    //     exit(1)
+    // }
+    int buf_len = receive_until_null(connectionfd, sock, buf);
+    std::string request = std::string(buf);
+
+    // if (!parse(request)) {
+    //     // handle error: request was invalid
+    // }
+
+
+
+
+
+    // parse
+
+
+    // check if request type is write
+        // save remaining input to data
+        int data_len = buf_len - (request.length() + 1);
+        for (int i = 0; i < data_len; ++i) {
+            data[i] = buf[request.length() + 1 + i];
+        }    
+
+        // receive_data
+        receive_data(connectionfd, sock, data_len, data);
+
+    
+    // debugging
+    std::cout << "Client says " << request << std::endl;
+    
+    for (int i = 0; i < data_len; ++i) {
+        std::cout << data[i];
     }
+    std::cout << '\n';
+
+    //
+
+
+    // // if parsed msg is valid, send to client
+    // send_bytes(sock, msg.c_str());
+
+	// (4) Close connection
+	close(connectionfd);
+
+	return 0;
+}
+
+/**
+ * Endlessly runs a server that listens for connections and serves
+ * them _synchronously_.
+ *
+ * Parameters:
+ *		port: 		The port on which to listen for incoming connections.
+ *		queue_size: 	Size of the listen() queue
+ * Returns:
+ *		-1 on failure, does not return on success.
+ */
+int FileServer::run(int queue_size) {
+	// (1) Create socket
+	int sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock == -1) {
+		perror("Error opening stream socket");
+		return -1;
+	}
+
+	// (2) Set the "reuse port" socket option
+	int yesval = 1;
+	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yesval, sizeof(yesval)) == -1) {
+		perror("Error setting socket options");
+		return -1;
+	}
+
+	// (3) Create a sockaddr_in struct for the proper port and bind() to it.
+	struct sockaddr_in addr;
+	if (make_server_sockaddr(&addr, port) == -1) {
+		return -1;
+	}
+
+	// (3b) Bind to the port.
+	if (bind(sock, (sockaddr *) &addr, sizeof(addr)) == -1) {
+		perror("Error binding stream socket");
+		return -1;
+	}
+
+	// (3c) Detect which port was chosen.
+	port = get_port_number(sock);
 
     // NETWORK SET UP COMPLETE
     // Broadcast FileServer boot
-    std::cout << "\n@@@ port " << port_number << std::endl;
+    cout_lock.lock();
+    std::cout << "\n@@@ port " << port << std::endl;
+    cout_lock.unlock();
 
-    // accept
-    int new_socket;
-    while ((new_socket = accept(sock, (struct sockaddr*)&addr, &addr_len)) >= 0) {
-        // get, parse, handle client request
+	// (4) Begin listening for incoming connections.
+	listen(sock, queue_size);
 
-        // figure out where we need to start a new thread
+	// (5) Serve incoming connections one by one forever.
+	while (true) {
+		int connectionfd = accept(sock, 0, 0);
+		if (connectionfd == -1) {
+			perror("Error accepting connection");
+			return -1;
+		}
 
-        // figure out locks for shared buffers, or just don't have shared buffers
-    }
+		if (handle_connection(connectionfd, sock) == -1) {
+            perror("Error: handle_cnnection failed\n");
+			return -1;
+		}
+	}
 }
 
 
@@ -86,7 +176,8 @@ void FileServer::handle_request(RequestType type) {
             handle_delete();
             break;
         default:
-            // TODO: error stuff
+            std::cout << "Error: handle_request got invalid RequestType\n";
+            exit(1);
     }
 }
 
