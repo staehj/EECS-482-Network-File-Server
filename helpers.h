@@ -4,21 +4,26 @@
 #include <stdio.h>		// perror(), fprintf()
 #include <string.h>		// memcpy()
 #include <sys/socket.h>		// getsockname()
+#include <thread>
 #include <unistd.h>		// stderr
 
-#include <string>
+#include "file_server.h"
 
-/**
- * Make a server sockaddr given a port.
- * Parameters:
- *		addr: 	The sockaddr to modify (this is a C-style function).
- *		port: 	The port on which to listen for incoming connections.
- * Returns:
- *		0 on success, -1 on failure.
- * Example:
- *		struct sockaddr_in server;
- *		int err = make_server_sockaddr(&server, 8888);
- */
+
+class ThreadRAII {
+public:
+    ThreadRAII(FileServer* fs, int connectionfd, int sock) {
+        t = std::thread(&FileServer::thread_start, fs, connectionfd, sock);
+    }
+
+    ~ThreadRAII() {
+        t.detach();
+    }
+
+private:
+    std::thread t;
+};
+
 int make_server_sockaddr(struct sockaddr_in *addr, int port) {
 	// Step (1): specify socket family.
 	// This is an internet socket.
@@ -37,18 +42,6 @@ int make_server_sockaddr(struct sockaddr_in *addr, int port) {
 	return 0;
 }
 
-/**
- * Make a client sockaddr given a remote hostname and port.
- * Parameters:
- *		addr: 		The sockaddr to modify (this is a C-style function).
- *		hostname: 	The hostname of the remote host to connect to.
- *		port: 		The port to use to connect to the remote hostname.
- * Returns:
- *		0 on success, -1 on failure.
- * Example:
- *		struct sockaddr_in client;
- *		int err = make_client_sockaddr(&client, "141.88.27.42", 8888);
- */
 int make_client_sockaddr(struct sockaddr_in *addr, const char *hostname, int port) {
 	// Step (1): specify socket family.
 	// This is an internet socket.
@@ -71,15 +64,6 @@ int make_client_sockaddr(struct sockaddr_in *addr, const char *hostname, int por
 	return 0;
 }
 
-/**
- * Return the port number assigned to a socket.
- *
- * Parameters:
- * 		sockfd:	File descriptor of a socket
- *
- * Returns:
- *		The port number of the socket, or -1 on failure.
- */
 int get_port_number(int sockfd) {
     struct sockaddr_in addr;
     socklen_t length = sizeof(addr);
@@ -93,52 +77,25 @@ int get_port_number(int sockfd) {
 
 int send_bytes(int sock, const char* msg) {
 	// Call send() enough times to send all the data
-	size_t message_len = strlen(msg);
+	size_t message_len = strlen(msg) + 1;
+	// size_t message_len = strlen(msg);
 	size_t sent = 0;
+    std::cout << "msg" << msg << '\n';
 	do {
 		ssize_t n = send(sock, msg + sent, message_len - sent, MSG_NOSIGNAL);
-		if (n == -1) {
-            // TODO handle error
-			perror("Error sending on stream socket");
-			// return -1;
-		}
+        if (n == -1) {
+            continue;
+        }
+    std::cout << "sent before: " << sent << '\n';
+    std::cout << "n: " << n << '\n';
 		sent += n;
+    std::cout << "sent after: " << sent << '\n';
 	} while (sent < message_len);
 
+    std::cout << "meslen: " << message_len << '\n';
+    std::cout << "sent: " << sent << '\n';
     return 0;
 }
-
-std::string receive_bytes(int connectionfd, int sock) {
-    // (1) Receive message from client.
-	char buf[MAX_MESSAGE_SIZE];
-	memset(buf, 0, sizeof(buf));
-
-	// Call recv() enough times to consume all the data the client sends.
-    std::string msg;
-	size_t recvd = 0;
-	ssize_t rval;
-    int i = 0;
-	do {
-		// Receive as many additional bytes as we can in one call to recv()
-		// (while not exceeding MAX_MESSAGE_SIZE bytes in total).
-        std::cout << "1\n";
-		rval = recv(connectionfd, buf, MAX_MESSAGE_SIZE, 0);
-        std::cout << "2\n";
-        if (rval == -1) {
-			perror("Error reading stream message");
-            // TODO: handle error
-		}
-		recvd += rval;
-        if (recvd > MAX_MESSAGE_SIZE) {
-            // TODO: handle error: invalid
-        }
-
-        msg += std::string(buf, rval);
-	} while (rval > 0);  // recv() returns 0 when client closes
-
-    return msg;
-}
-
 
 int receive_until_null(int connectionfd, int sock, char* buf) {
     // Call recv() enough times to consume all the data the client sends.

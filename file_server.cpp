@@ -1,13 +1,16 @@
 #include "file_server.h"
 
+#include <cassert>
 #include <cstring>
 #include <iostream>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
+#include <stdlib.h>
 #include <string>
+#include <sstream>
+#include <thread>
 
-#include "exception.h"
 #include "fs_server.h"
 #include "helpers.h"
 
@@ -24,87 +27,6 @@ FileServer::FileServer(int port_number) {
     }
 }
 
-
-/**
- * Receives a string message from the client and prints it to stdout.
- *
- * Parameters:
- * 		connectionfd: 	File descriptor for a socket connection
- * 				(e.g. the one returned by accept())
- * Returns:
- *		0 on success, -1 on failure.
- */
-int handle_connection(int connectionfd, int sock) {
-
-	printf("New connection %d\n", connectionfd);
-
-	char buf[MAX_MESSAGE_SIZE];
-	memset(buf, 0, sizeof(buf));
-
-	char data[FS_BLOCKSIZE];
-	memset(data, 0, sizeof(data));
-
-    // try {
-    //     receive_bytes(connectionfd, sock, msg);
-    // }
-    // catch (CUSTOMECEPTION) {
-    //     exit(1)
-    // }
-    int buf_len = receive_until_null(connectionfd, sock, buf);
-    std::string request = std::string(buf);
-
-    // if (!parse(request)) {
-    //     // handle error: request was invalid
-    // }
-
-
-
-
-
-    // parse
-
-
-    // check if request type is write
-        // save remaining input to data
-        int data_len = buf_len - (request.length() + 1);
-        for (int i = 0; i < data_len; ++i) {
-            data[i] = buf[request.length() + 1 + i];
-        }    
-
-        // receive_data
-        receive_data(connectionfd, sock, data_len, data);
-
-    
-    // debugging
-    std::cout << "Client says " << request << std::endl;
-    
-    for (int i = 0; i < data_len; ++i) {
-        std::cout << data[i];
-    }
-    std::cout << '\n';
-
-    //
-
-
-    // // if parsed msg is valid, send to client
-    // send_bytes(sock, msg.c_str());
-
-	// (4) Close connection
-	close(connectionfd);
-
-	return 0;
-}
-
-/**
- * Endlessly runs a server that listens for connections and serves
- * them _synchronously_.
- *
- * Parameters:
- *		port: 		The port on which to listen for incoming connections.
- *		queue_size: 	Size of the listen() queue
- * Returns:
- *		-1 on failure, does not return on success.
- */
 int FileServer::run(int queue_size) {
 	// (1) Create socket
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -152,48 +74,232 @@ int FileServer::run(int queue_size) {
 			return -1;
 		}
 
-		if (handle_connection(connectionfd, sock) == -1) {
-            perror("Error: handle_cnnection failed\n");
-			return -1;
-		}
+        // start handle_message through thread
+        try {
+            // std::thread t(&FileServer::thread_start, this, connectionfd, sock);
+            // t.detach();
+            ThreadRAII(this, connectionfd, sock);
+        }
+        catch (Exception &exception) {
+            close(connectionfd);
+        }
+
 	}
 }
 
-
-void FileServer::handle_request(RequestType type) {
-    // TODO maybe some RAII stuff for exception/error handling
-    switch(type) {
-        case RequestType::READ:
-            handle_read();
-            break;
-        case RequestType::WRITE:
-            handle_write();
-            break;
-        case RequestType::CREATE:
-            handle_create();
-            break;
-        case RequestType::DELETE:
-            handle_delete();
-            break;
-        default:
-            std::cout << "Error: handle_request got invalid RequestType\n";
-            exit(1);
+void FileServer::thread_start(int connectionfd, int sock) {
+    if (handle_message(connectionfd, sock) == -1) {
+        perror("Error: handle_connection failed\n");
+        throw Exception();
     }
 }
 
-void FileServer::handle_read() {
+int FileServer::handle_message(int connectionfd, int sock) {
+	// initialize buffer
+    char buf[MAX_MESSAGE_SIZE];
+	memset(buf, 0, sizeof(buf));
+
+    // receive into buf (until null character is found)
+    // TODO: make exceptions and put this into try-catch
+    int buf_len = receive_until_null(connectionfd, sock, buf);
+    std::string request = std::string(buf);
+
+    // parse
+    RequestType req_type = parse(request);
+
+    // check if request type is write
+    if (req_type == RequestType::WRITE) {
+        // save remaining input to data
+        char data[FS_BLOCKSIZE];
+        memset(data, 0, sizeof(data));
+        int data_len = buf_len - (request.length() + 1);
+        for (int i = 0; i < data_len; ++i) {
+            data[i] = buf[request.length() + 1 + i];
+        }    
+
+        // receive_data
+        receive_data(connectionfd, sock, data_len, data);
+        
+        //// debugging ////
+        std::cerr << "Client says " << request << std::endl;
+        
+        for (int i = 0; i < data_len; ++i) {
+            std::cerr << data[i];
+        }
+        std::cerr << '\n';
+        ////////
+
+
+        handle_request(req_type, request, data);
+    }
+    else {
+        handle_request(req_type, request, nullptr);
+    }
+
+    // send to client
+    send_bytes(sock, request.c_str());
+
+	// close connection
+	close(connectionfd);
+
+	return 0;
+}
+
+FileServer::RequestType FileServer::parse(std::string msg) {
+    std::stringstream msg_ss(msg);
+    std::string canonical;
+    std::string word;
+    RequestType request_type;
+
+    msg_ss >> word;
+    canonical += word;
+
+    if (word == "FS_READBLOCK") {
+        request_type = RequestType::READ;
+        canonical += " " + check_username(msg_ss);
+        canonical += " " + check_pathname(msg_ss);
+        canonical += " " + check_block(msg_ss);
+    }
+    else if (word == "FS_WRITEBLOCK") {
+        request_type = RequestType::WRITE;
+        canonical += " " + check_username(msg_ss);
+        canonical += " " + check_pathname(msg_ss);
+        canonical += " " + check_block(msg_ss);
+    }
+    else if (word == "FS_CREATE") {
+        request_type = RequestType::CREATE;
+        canonical += " " + check_username(msg_ss);
+        canonical += " " + check_pathname(msg_ss);
+        canonical += " " + check_type(msg_ss);
+    }
+    else if (word == "FS_DELETE") {
+        request_type = RequestType::DELETE;
+        canonical += " " + check_username(msg_ss);
+        canonical += " " + check_pathname(msg_ss);
+    }
+    else {
+        // invalid
+        std::cerr << "Error: invalid request: " << word << "\n";
+        throw Exception();
+    }
+
+    if (msg == canonical) {
+        return request_type;
+    }
+    else {
+        // invalid
+        std::cerr << "Error: canonical comparison failed:\n" << msg << "\n";
+        throw Exception();
+    }
+}
+
+std::string FileServer::check_username(std::stringstream &msg_ss) {
+    std::string username;
+    if (msg_ss >> username) {
+        if (username.length() > FS_MAXUSERNAME) {
+            std::cerr << "Error: long username: " << username << "\n";
+            throw Exception();
+        }
+    }
+    else {
+        std::cerr << "Error: missing username.\n";
+        throw Exception();
+    }
+    return username;
+}
+
+std::string FileServer::check_pathname(std::stringstream &msg_ss) {
+    std::string pathname;
+    if (msg_ss >> pathname) {
+        if (pathname.length() > FS_MAXPATHNAME
+        || pathname[0] != '/' || pathname[pathname.length()-1] == '/') {
+            std::cerr << "Error: invalid pathname: " << pathname << "\n";
+            throw Exception();
+        }
+    }
+    else {
+        std::cerr << "Error: missing pathname.\n";
+        throw Exception();
+    }
+    return pathname;
+}
+
+std::string FileServer::check_block(std::stringstream &msg_ss) {
+    int block;
+    if (msg_ss >> block) {
+        if (block < 0 || block >= FS_DISKSIZE) {
+            std::cerr << "Error: invalid block: " << block << "\n";
+            throw Exception();
+        }
+    }
+    else {
+        std::cerr << "Error: missing block.\n";
+        throw Exception();
+    }
+    return std::to_string(block);
+}
+
+std::string FileServer::check_type(std::stringstream &msg_ss) {
+    char type;
+    if (msg_ss >> type) {
+        if (type != 'f' && type != 'd') {
+            std::cerr << "Error: invalid type: " << type << "\n";
+            throw Exception();
+        }
+    }
+    else {
+        std::cerr << "Error: missing type.\n";
+        throw Exception();
+    }
+    return std::string(1, type);
+}
+
+void FileServer::handle_request(RequestType type, std::string request, const char* data) {
+    // TODO maybe some RAII stuff for exception/error handling
+    switch(type) {
+        case RequestType::READ:
+            assert(data == nullptr);
+            handle_read(request);
+            break;
+        case RequestType::WRITE:
+            handle_write(request, data);
+            break;
+        case RequestType::CREATE:
+            assert(data == nullptr);
+            handle_create(request);
+            break;
+        case RequestType::DELETE:
+            assert(data == nullptr);
+            handle_delete(request);
+            break;
+        default:
+            std::cerr << "Error: this should never print...\n";
+            throw Exception();
+    }
+}
+
+void FileServer::handle_read(std::string request) {
+    std::stringstream req_ss(request);
+    std::string req_type, username, pathname;
+    int block;
+    req_ss >> req_type >> username >> pathname >> block;
+
+    // check it exists
+    check_path_exists(pathname);
+
+    // read from disk
 
 }
 
-void FileServer::handle_write() {
+void FileServer::handle_write(std::string request, const char* data) {
 
 }
 
-void FileServer::handle_create() {
+void FileServer::handle_create(std::string request) {
 
 }
 
-void FileServer::handle_delete() {
+void FileServer::handle_delete(std::string request) {
 
 }
 
