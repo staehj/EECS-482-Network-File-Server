@@ -6,6 +6,7 @@
 #include <string>
 #include <sstream>
 #include <unordered_set>
+#include <vector>
 
 #include "fs_param.h"
 #include "fs_server.h"
@@ -40,21 +41,38 @@ private:
 
     std::string check_type(std::stringstream &msg_ss);
 
-    void handle_request(RequestType type, std::string request, const char* data);
+    void handle_request(RequestType type, std::string request, const char* data, int sock);
 
-    void handle_read(std::string request);
+    void handle_read(std::string request, int sock);
 
-    void handle_write(std::string request, const char* data);
+    void handle_write(std::string request, const char* data, int sock);
 
-    void handle_create(std::string request);
+    void handle_create(std::string request, int sock);
 
-    void handle_delete(std::string request);
+    void handle_delete(std::string request, int sock);
+
+    int find_path(std::deque<std::string> &names, std::string username,
+                   std::unique_lock<std::mutex> &cur_lock, fs_inode &cur_inode);
+
+    void decompose_path(std::deque<std::string> &names, std::string pathname);
 
     void traverse_fs();
 
+    void check_inode_type(fs_inode &cur_inode, char type);
+    
+    void check_inode_username(fs_inode &cur_inode, std::string username);
+
+    bool check_name_exists_in_dir(fs_inode &inode, std::string name);
+
+    void create_inode(fs_inode &cur_inode, int cur_block, std::string username, std::string name,
+                      char type);
+
+    DirEntryIndex get_free_direntryindex(fs_inode inode);
+
+    int get_free_block();
+
     std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<uint32_t> > free_blocks;
-    fs_inode buf_inode;
-    fs_direntry buf_direntries [FS_DIRENTRIES];
+    std::vector<std::mutex> block_locks;
     int port;
 };
 

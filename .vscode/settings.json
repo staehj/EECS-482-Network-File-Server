@@ -72,6 +72,7 @@
     "__functional_base": "cpp",
     "algorithm": "cpp",
     "iterator": "cpp",
-    "utility": "cpp"
+    "utility": "cpp",
+    "shared_mutex": "cpp"
   }
 }

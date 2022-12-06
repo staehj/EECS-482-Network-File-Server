@@ -1,4 +1,5 @@
 #include <arpa/inet.h>		// htons(), ntohs()
+#include <mutex>
 #include <netdb.h>		// gethostbyname(), struct hostent
 #include <netinet/in.h>		// struct sockaddr_in
 #include <stdio.h>		// perror(), fprintf()
@@ -6,9 +7,19 @@
 #include <sys/socket.h>		// getsockname()
 #include <thread>
 #include <unistd.h>		// stderr
+#include <vector>
 
 #include "file_server.h"
 
+
+struct DirEntryIndex {
+    int block_index;
+    int direntry_offset;
+    int block;
+
+    DirEntryIndex(int block_index, int direntry_offset, int block)
+        : block_index(block_index), direntry_offset(direntry_offset), block(block) {};
+};
 
 class ThreadRAII {
 public:

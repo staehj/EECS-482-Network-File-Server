@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
+#include <mutex>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
@@ -10,12 +11,13 @@
 #include <string>
 #include <sstream>
 #include <thread>
+#include <vector>
 
 #include "fs_server.h"
 #include "helpers.h"
 
 
-FileServer::FileServer(int port_number) {
+FileServer::FileServer(int port_number) : block_locks(FS_DISKSIZE) {
     // traverse from root (block 0)
     traverse_fs();
 
@@ -119,25 +121,12 @@ int FileServer::handle_message(int connectionfd, int sock) {
 
         // receive_data
         receive_data(connectionfd, sock, data_len, data);
-        
-        //// debugging ////
-        std::cerr << "Client says " << request << std::endl;
-        
-        for (int i = 0; i < data_len; ++i) {
-            std::cerr << data[i];
-        }
-        std::cerr << '\n';
-        ////////
 
-
-        handle_request(req_type, request, data);
+        handle_request(req_type, request, data, sock);
     }
     else {
-        handle_request(req_type, request, nullptr);
+        handle_request(req_type, request, nullptr, sock);
     }
-
-    // send to client
-    send_bytes(sock, request.c_str());
 
 	// close connection
 	close(connectionfd);
@@ -202,7 +191,7 @@ std::string FileServer::check_username(std::stringstream &msg_ss) {
         }
     }
     else {
-        std::cerr << "Error: missing username.\n";
+        std::cerr << "Error: missing username\n";
         throw Exception();
     }
     return username;
@@ -218,7 +207,7 @@ std::string FileServer::check_pathname(std::stringstream &msg_ss) {
         }
     }
     else {
-        std::cerr << "Error: missing pathname.\n";
+        std::cerr << "Error: missing pathname\n";
         throw Exception();
     }
     return pathname;
@@ -233,7 +222,7 @@ std::string FileServer::check_block(std::stringstream &msg_ss) {
         }
     }
     else {
-        std::cerr << "Error: missing block.\n";
+        std::cerr << "Error: missing block\n";
         throw Exception();
     }
     return std::to_string(block);
@@ -248,29 +237,29 @@ std::string FileServer::check_type(std::stringstream &msg_ss) {
         }
     }
     else {
-        std::cerr << "Error: missing type.\n";
+        std::cerr << "Error: missing type\n";
         throw Exception();
     }
     return std::string(1, type);
 }
 
-void FileServer::handle_request(RequestType type, std::string request, const char* data) {
-    // TODO maybe some RAII stuff for exception/error handling
+void FileServer::handle_request(RequestType type, std::string request, const char* data,
+                                int sock) {
     switch(type) {
         case RequestType::READ:
             assert(data == nullptr);
-            handle_read(request);
+            handle_read(request, sock);
             break;
         case RequestType::WRITE:
-            handle_write(request, data);
+            handle_write(request, data, sock);
             break;
         case RequestType::CREATE:
             assert(data == nullptr);
-            handle_create(request);
+            handle_create(request, sock);
             break;
         case RequestType::DELETE:
             assert(data == nullptr);
-            handle_delete(request);
+            handle_delete(request, sock);
             break;
         default:
             std::cerr << "Error: this should never print...\n";
@@ -278,32 +267,165 @@ void FileServer::handle_request(RequestType type, std::string request, const cha
     }
 }
 
-void FileServer::handle_read(std::string request) {
+void FileServer::handle_read(std::string request, int sock) {
     std::stringstream req_ss(request);
     std::string req_type, username, pathname;
     int block;
     req_ss >> req_type >> username >> pathname >> block;
 
+    // decompose path
+    std::deque<std::string> names;
+    decompose_path(names, pathname);
+
     // check it exists
-    check_path_exists(pathname);
+    std::unique_lock<std::mutex> cur_lock(block_locks[0]);
+    fs_inode cur_inode;
+    find_path(names, username, cur_lock, cur_inode);
 
-    // read from disk
+    // check that inode is file
+    check_inode_type(cur_inode, 'f');
+    
+    // check user permissions for inode
+    check_inode_username(cur_inode, username);
+
+    // iterate through data blocks
+    for (int i = 0; i < cur_inode.size; ++i) {
+        // read data from block
+        char data[FS_BLOCKSIZE];
+        disk_readblock(cur_inode.blocks[i], data);
+
+        // send request + data to client
+        send_bytes(sock, request.c_str());
+        send_bytes(sock, data);
+    }
+}
+
+void FileServer::handle_write(std::string request, const char* data, int sock) {
 
 }
 
-void FileServer::handle_write(std::string request, const char* data) {
+void FileServer::handle_create(std::string request, int sock) {
+    std::stringstream req_ss(request);
+    std::string req_type, username, pathname;
+    char type;
+    req_ss >> req_type >> username >> pathname >> type;
+
+    // decompose path
+    std::deque<std::string> names;
+    decompose_path(names, pathname);
+
+    // remove last inode name
+    std::string new_name = names.back();
+    names.pop_back();
+
+    // check it exists
+    std::unique_lock<std::mutex> cur_lock(block_locks[0]);
+    fs_inode cur_inode;
+    int cur_block = find_path(names, username, cur_lock, cur_inode);
+
+    // check user permissions for inode
+    check_inode_username(cur_inode, username);
+
+    // check that inode is directory
+    check_inode_type(cur_inode, 'd');
+
+    // check if file/dir with name new_name already exists
+    if (check_name_exists_in_dir(cur_inode, new_name)) {
+        std::cerr << "Error: in CREATE, name " << new_name << " already existed in "
+                  << pathname << '\n';
+        throw Exception();
+    }
+
+    // create new thing (file or directory)
+    create_inode(cur_inode, cur_block, username, new_name, type);
+
+    // send request to client
+    send_bytes(sock, request.c_str());
+}
+
+void FileServer::handle_delete(std::string request, int sock) {
 
 }
 
-void FileServer::handle_create(std::string request) {
+int FileServer::find_path(std::deque<std::string> &names, std::string username,
+                           std::unique_lock<std::mutex> &cur_lock, fs_inode &cur_inode) {
+    // temporary buffers
+    fs_inode buf_inode;
+    fs_direntry buf_direntries [FS_DIRENTRIES];
 
+    // get root inode
+    // Note: we are holding lock for root inode
+    disk_readblock(0, &cur_inode);
+    bool found = false;
+
+    while (!names.empty()) {
+        std::string cur_name = names.front();
+        names.pop_front();
+
+        // check user has inode permissions
+        if (std::string(cur_inode.owner) != ""
+        && std::string(cur_inode.owner) != username) {
+            std::cerr << "Error: user " << username << " permission denied, owner was "
+                      << cur_inode.owner << "\n";
+            throw Exception();
+        }
+
+        // check inode is dir, not file
+        check_inode_type(cur_inode, 'd');
+
+        // search block in cur_inode for direntry with name cur_name
+        for (int i = 0; i < cur_inode.size; ++i) {
+            int cur_block = cur_inode.blocks[i];
+
+            // read direntries from block
+            disk_readblock(cur_block, &buf_direntries);
+
+            // store all inode blocks from direntries
+            for (int j = 0; j < FS_DIRENTRIES; ++j) {
+                // unused directory
+                if (buf_direntries[j].inode_block == 0) {
+                    break;
+                }
+
+                // check if cur_name is found
+                if (std::string(buf_direntries[j].name) == cur_name) {
+                    // get lock of this inode
+                    int next_inode = buf_direntries[j].inode_block;
+                    std::unique_lock<std::mutex> next_lock(block_locks[next_inode]);
+                    cur_lock.swap(next_lock);
+
+                    // update cur_inode
+                    disk_readblock(next_inode, &cur_inode);
+
+                    return next_inode;
+                }
+            }
+        }
+    }
+
+    std::cerr << "Error: pathname not found\n";
+    throw Exception();
 }
 
-void FileServer::handle_delete(std::string request) {
-
+void FileServer::decompose_path(std::deque<std::string> &names, std::string pathname) {
+    std::string name;
+    for (int i = 1; i < pathname.length(); i++) {
+        if (pathname[i] != '/') {
+            name += pathname[i];
+        }
+        else {
+            names.push_back(name);
+            name = "";
+        }
+    }
+    names.push_back(name);
 }
 
 void FileServer::traverse_fs() {
+    // temporary buffers
+    fs_inode buf_inode;
+    fs_direntry buf_direntries [FS_DIRENTRIES];
+
     // initialize free_blocks_set to all blocks
     std::unordered_set<uint32_t> free_blocks_set;
     for (uint32_t i = 0; i < FS_DISKSIZE; ++i) {
@@ -349,4 +471,129 @@ void FileServer::traverse_fs() {
     for (uint32_t block_num : free_blocks_set) {
         free_blocks.push(block_num);
     }
+}
+
+void FileServer::check_inode_type(fs_inode &cur_inode, char type) {
+    if (cur_inode.type != type) {
+        std::cerr << "Error: inode was type " << cur_inode.type << ", client sent "
+                  << type << '\n';
+        throw Exception();
+    }
+}
+
+void FileServer::check_inode_username(fs_inode &cur_inode, std::string username) {
+    if (std::string(cur_inode.owner) != username) {
+        std::cerr << "Error: inode had owner " << cur_inode.owner << ", client sent "
+                  << username << '\n';
+        throw Exception();
+    }
+}
+
+bool FileServer::check_name_exists_in_dir(fs_inode &inode, std::string name) {
+    fs_direntry buf_direntries [FS_DIRENTRIES];
+    // iterate through blocks
+    for (int i = 0; i < inode.size; ++i) {
+        int block = inode.blocks[i];
+
+        // read direntries from block
+        disk_readblock(block, &buf_direntries);
+
+        // store all inode blocks from direntries
+        for (int j = 0; j < FS_DIRENTRIES; ++j) {
+            // unused directory
+            if (buf_direntries[j].inode_block == 0) {
+                break;
+            }
+
+            // check if cur_name is found
+            if (std::string(buf_direntries[j].name) == name) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
+void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string username,
+                              std::string name, char type) {
+    // get free space for a direntry
+    DirEntryIndex ind = get_free_direntryindex(cur_inode);
+    fs_direntry buf_direntries [FS_DIRENTRIES];
+    bool cur_inode_changed = false;
+
+    // new block was created for direntry
+    if (cur_inode.size == ind.block_index) {
+        cur_inode_changed = true;
+
+        // if new block assigned, link cur_inode to new block
+        cur_inode.blocks[ind.block_index] = ind.block;
+        cur_inode.size++;
+
+        // zero initialize new 
+        memset(buf_direntries, 0, sizeof(buf_direntries));
+    }
+    // existing block was used
+    else {
+        // Note: block contains direntries
+        disk_readblock(ind.block, buf_direntries);
+    }
+
+    // create new inode
+    fs_inode new_inode;
+    new_inode.type = type;
+    strcpy(new_inode.owner, username.c_str());
+    new_inode.size = 0;
+
+    // write inode to disk
+    int ionde_block = get_free_block();
+    disk_writeblock(ionde_block, &new_inode);
+
+    // add new direntry
+    fs_direntry new_direntry;
+    strcpy(new_direntry.name, name.c_str());
+    new_direntry.inode_block = ionde_block;
+    buf_direntries[ind.direntry_offset] = new_direntry;
+
+    // write new direntry to disk
+    disk_writeblock(ind.block, &buf_direntries);
+
+    // write cur_inode to disk if changed
+    if (cur_inode_changed) {
+        disk_writeblock(cur_block, &cur_inode);
+    }
+}
+
+DirEntryIndex FileServer::get_free_direntryindex(fs_inode inode) {
+    fs_direntry buf_direntries [FS_DIRENTRIES];
+    // iterate through blocks
+    for (int i = 0; i < inode.size; ++i) {
+        int block = inode.blocks[i];
+
+        // read direntries from block
+        disk_readblock(block, &buf_direntries);
+
+        // store all inode blocks from direntries
+        for (int j = 0; j < FS_DIRENTRIES; ++j) {
+            // unused directory
+            if (buf_direntries[j].inode_block == 0) {
+                return DirEntryIndex(i, j, block);
+            }
+        }
+    }
+
+    int free_block = get_free_block();
+
+    return DirEntryIndex(free_block, 0, free_block);
+}
+
+int FileServer::get_free_block() {
+    if (free_blocks.empty()) {
+        std::cerr << "Error: no free block remaining\n";
+        throw Exception();
+    }
+
+    int free_block = free_blocks.top();
+    free_blocks.pop();
+    return free_block;
 }
