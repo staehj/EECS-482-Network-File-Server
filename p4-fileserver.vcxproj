@@ -127,6 +127,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="exception.h" />
+    <ClInclude Include="file_server.h" />
     <ClInclude Include="fs_client.h" />
     <ClInclude Include="fs_param.h" />
     <ClInclude Include="fs_server.h" />
@@ -146,6 +148,10 @@
     <Object Include="libfs_client_macos.o" />
     <Object Include="libfs_server.o" />
     <Object Include="libfs_server_macos.o" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="file_server.cpp" />
+    <ClCompile Include="fs_server.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
