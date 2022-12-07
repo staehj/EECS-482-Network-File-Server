@@ -72,12 +72,16 @@ int get_port_number(int sockfd) {
 
 int send_bytes(int sock, const char* msg, size_t message_len) {
 	// Call send() enough times to send all the data
+  std::cout << "message_len: " << message_len << '\n';
+  std::cout << "std::string(msg): " << std::string(msg) << '\n';
 	size_t sent = 0;
 	do {
+    // std::cout << "sent: " << sent << "\n";
 		ssize_t n = send(sock, msg + sent, message_len - sent, MSG_NOSIGNAL);
-        if (n == -1) {
-            continue;
-        }
+    if (n == -1) {
+        // perror("send failed: ");
+        continue;
+    }
     std::cout << "sent before: " << sent << '\n';
     std::cout << "n: " << n << '\n';
 		sent += n;

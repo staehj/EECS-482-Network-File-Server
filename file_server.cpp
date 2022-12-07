@@ -248,18 +248,26 @@ void FileServer::handle_request(RequestType type, std::string request, const cha
     switch(type) {
         case RequestType::READ:
             assert(data == nullptr);
+            std::cout << "calling handle_read with request:\n" << request << '\n';
             handle_read(request, sock);
+            std::cout << "handle_read ended\n";
             break;
         case RequestType::WRITE:
+            std::cout << "calling handle_write with request:\n" << request << '\n';
             handle_write(request, data, sock);
+            std::cout << "handle_write ended\n";
             break;
         case RequestType::CREATE:
             assert(data == nullptr);
+            std::cout << "calling handle_create with request:\n" << request << '\n';
             handle_create(request, sock);
+            std::cout << "handle_create ended\n";
             break;
         case RequestType::DELETE:
             assert(data == nullptr);
+            std::cout << "calling handle_delete with request:\n" << request << '\n';
             handle_delete(request, sock);
+            std::cout << "handle_delete ended\n";
             break;
         default:
             std::cerr << "Error: this should never print...\n";
@@ -352,7 +360,6 @@ void FileServer::handle_write(std::string request, const char* data, int sock) {
 }
 
 void FileServer::handle_create(std::string request, int sock) {
-    std::cout << request << '\n';
     std::stringstream req_ss(request);
     std::string req_type, username, pathname;
     char type;
@@ -362,24 +369,23 @@ void FileServer::handle_create(std::string request, int sock) {
     std::deque<std::string> names;
     decompose_path(names, pathname);
 
+    std::cout << "a" << '\n';
+
     // remove last inode name
     std::string new_name = names.back();
     names.pop_back();
 
-    std::cout << pathname << '\n';
-    for (auto name : names) {
-        std::cout << name << '\n';
-    }
-    std::cout << pathname.size() << '\n';
-
+    std::cout << "b" << '\n';
     // check it exists
     std::unique_lock<std::mutex> cur_lock(block_locks[0]);
     fs_inode cur_inode;
     int cur_block = find_path(names, username, cur_lock, cur_inode);
 
+    std::cout << "c" << '\n';
     // check that inode is directory
     check_inode_type(cur_inode, 'd');
 
+    std::cout << "d" << '\n';
     // check if file/dir with name new_name already exists
     if (check_name_exists_in_dir(cur_inode, new_name)) {
         std::cerr << "Error: in CREATE, name " << new_name << " already existed in "
@@ -387,11 +393,15 @@ void FileServer::handle_create(std::string request, int sock) {
         throw Exception();
     }
 
+    std::cout << "e" << '\n';
     // create new thing (file or directory)
     create_inode(cur_inode, cur_block, username, new_name, type);
 
+    std::cout << "f" << '\n';
     // send request to client
     send_bytes(sock, request.c_str(), request.size() + 1);
+
+    std::cout << "g" << '\n';
 }
 
 void FileServer::handle_delete(std::string request, int sock) {
@@ -476,6 +486,11 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
     // get root inode
     // Note: we are holding lock for root inode
     disk_readblock(0, &cur_inode);
+
+    // root directory
+    if (names.empty()) {
+        return 0;
+    }
 
     while (!names.empty()) {
         std::string cur_name = names.front();
@@ -681,6 +696,10 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
     // write new direntry to disk
     disk_writeblock(ind.block, &buf_direntries);
 
+    if (cur_block == 0) {
+        std::cout << "cur_inode_changed: " << cur_inode_changed<< '\n';
+    }
+
     // write cur_inode to disk if changed
     if (cur_inode_changed) {
         disk_writeblock(cur_block, &cur_inode);
@@ -707,7 +726,7 @@ DirEntryIndex FileServer::get_free_direntryindex(fs_inode inode) {
 
     int free_block = get_free_block();
 
-    return DirEntryIndex(free_block, 0, free_block);
+    return DirEntryIndex(inode.size, 0, free_block);
 }
 
 int FileServer::get_free_block() {
