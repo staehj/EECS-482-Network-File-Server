@@ -9,7 +9,7 @@ else
 endif
 
 # List of source files for your file server
-FS_SOURCES=fs_server.cpp file_server.cpp
+FS_SOURCES=main.cpp file_server.cpp helpers.cpp
 
 # Generate the names of the file server's object files
 FS_OBJS=${FS_SOURCES:.cpp=.o}

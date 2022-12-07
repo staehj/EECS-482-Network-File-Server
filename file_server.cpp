@@ -284,27 +284,75 @@ void FileServer::handle_read(std::string request, int sock) {
 
     // check that inode is file
     check_inode_type(cur_inode, 'f');
-    
-    // check user permissions for inode
-    check_inode_username(cur_inode, username);
 
-    // iterate through data blocks
-    for (int i = 0; i < cur_inode.size; ++i) {
-        // read data from block
-        char data[FS_BLOCKSIZE];
-        disk_readblock(cur_inode.blocks[i], data);
-
-        // send request + data to client
-        send_bytes(sock, request.c_str());
-        send_bytes(sock, data);
+    // check that block is valid
+    if (block < 0 || block >= cur_inode.size) {
+        std::cerr << "Error: block " << block << " was out of range\n";
+        throw Exception();
     }
+
+    // read block
+    char data[FS_BLOCKSIZE];
+    disk_readblock(cur_inode.blocks[block], data);
+
+    // send request + data to client
+    send_bytes(sock, request.c_str(), request.size() + 1);
+    send_bytes(sock, data, FS_BLOCKSIZE);
 }
 
 void FileServer::handle_write(std::string request, const char* data, int sock) {
+    std::stringstream req_ss(request);
+    std::string req_type, username, pathname;
+    int block;
+    req_ss >> req_type >> username >> pathname >> block;
 
+    // decompose path
+    std::deque<std::string> names;
+    decompose_path(names, pathname);
+
+
+    // check it exists
+    std::unique_lock<std::mutex> cur_lock(block_locks[0]);
+    fs_inode cur_inode;
+    int cur_block = find_path(names, username, cur_lock, cur_inode);
+
+    // check that inode is file
+    check_inode_type(cur_inode, 'f');
+
+    // check that block is valid
+    if (block < 0 || block > cur_inode.size) {
+        std::cerr << "Error: block " << block << " was out of range\n";
+        throw Exception();
+    }
+
+    // writing to block immediately after end of file
+    if (block == cur_inode.size) {
+        // get free block
+        int new_block = get_free_block();
+
+        // write data from input to free block (disk)
+        disk_writeblock(new_block, data);
+
+        // increment size
+        ++cur_inode.size;
+
+        // add new block number to inode blocks
+        cur_inode.blocks[block] = new_block;
+
+        // write inode to disk
+        disk_writeblock(cur_block, data);
+    }
+    else {
+        // write data from input to given block (disk)
+        disk_writeblock(cur_inode.blocks[block], data);
+    }
+
+    // send request to client
+    send_bytes(sock, request.c_str(), request.size() + 1);
 }
 
 void FileServer::handle_create(std::string request, int sock) {
+    std::cout << request << '\n';
     std::stringstream req_ss(request);
     std::string req_type, username, pathname;
     char type;
@@ -318,13 +366,16 @@ void FileServer::handle_create(std::string request, int sock) {
     std::string new_name = names.back();
     names.pop_back();
 
+    std::cout << pathname << '\n';
+    for (auto name : names) {
+        std::cout << name << '\n';
+    }
+    std::cout << pathname.size() << '\n';
+
     // check it exists
     std::unique_lock<std::mutex> cur_lock(block_locks[0]);
     fs_inode cur_inode;
     int cur_block = find_path(names, username, cur_lock, cur_inode);
-
-    // check user permissions for inode
-    check_inode_username(cur_inode, username);
 
     // check that inode is directory
     check_inode_type(cur_inode, 'd');
@@ -340,23 +391,91 @@ void FileServer::handle_create(std::string request, int sock) {
     create_inode(cur_inode, cur_block, username, new_name, type);
 
     // send request to client
-    send_bytes(sock, request.c_str());
+    send_bytes(sock, request.c_str(), request.size() + 1);
 }
 
 void FileServer::handle_delete(std::string request, int sock) {
+    std::stringstream req_ss(request);
+    std::string req_type, username, pathname;
+    req_ss >> req_type >> username >> pathname;
 
+    // decompose path
+    std::deque<std::string> names;
+    decompose_path(names, pathname);
+
+    // remove last inode name
+    std::string new_name = names.back();
+    names.pop_back();
+
+    // check it exists
+    std::unique_lock<std::mutex> cur_lock(block_locks[0]);
+    fs_inode cur_inode;
+    int cur_block = find_path(names, username, cur_lock, cur_inode);
+
+    // get target inode block number
+    DirEntryIndex direntry_index;
+    fs_direntry buf_direntries [FS_DIRENTRIES];
+    int target_inode_block = get_target_inode_block(cur_inode, new_name, direntry_index,
+                                                    buf_direntries);
+
+    // grab lock of target inode
+    std::unique_lock<std::mutex> target_lock(block_locks[target_inode_block]);
+
+    // read inode from disk
+    fs_inode target_inode;
+    disk_readblock(target_inode_block, &target_inode);
+
+    // if directory, it is empty
+    if (target_inode.type == 'd') {
+        check_directory_empty(target_inode);
+    }
+
+    // check user permissions of delete target
+    check_inode_username(target_inode, username);
+
+    // free all blocks used by target_inode
+    // Note: if directory, this will not be entered
+    for (int i = 0; i < target_inode.size; ++i) {
+        add_free_block(target_inode.blocks[i]);
+    }
+
+    // free target_inode block
+    // UPDATES inode block in disk
+    add_free_block(target_inode_block);
+
+    // check if it is the only direntry in block
+    if (get_direntry_count(buf_direntries) == 1) {
+        // align blocks to left + decrement size
+        fix_inode(cur_inode, direntry_index.block_index);
+
+        // update free blocks
+        add_free_block(direntry_index.block);
+
+        // write new cur_inode to disk
+        disk_writeblock(cur_block, &cur_inode);
+    }
+    // there are many direntries in direntry block
+    // UPDATES direntries block in disk
+    else {
+        // remove direntry from direntries block
+        buf_direntries[direntry_index.direntry_offset].inode_block = 0;
+
+        // update new direntries block in disk
+        disk_writeblock(direntry_index.block, buf_direntries);
+    }
+
+    // send request to client
+    send_bytes(sock, request.c_str(), request.size() + 1);
 }
 
 int FileServer::find_path(std::deque<std::string> &names, std::string username,
                            std::unique_lock<std::mutex> &cur_lock, fs_inode &cur_inode) {
     // temporary buffers
-    fs_inode buf_inode;
     fs_direntry buf_direntries [FS_DIRENTRIES];
 
     // get root inode
     // Note: we are holding lock for root inode
     disk_readblock(0, &cur_inode);
-    bool found = false;
 
     while (!names.empty()) {
         std::string cur_name = names.front();
@@ -384,7 +503,7 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
             for (int j = 0; j < FS_DIRENTRIES; ++j) {
                 // unused directory
                 if (buf_direntries[j].inode_block == 0) {
-                    break;
+                    continue;
                 }
 
                 // check if cur_name is found
@@ -393,6 +512,9 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
                     int next_inode = buf_direntries[j].inode_block;
                     std::unique_lock<std::mutex> next_lock(block_locks[next_inode]);
                     cur_lock.swap(next_lock);
+
+                    // check user permissions for inode
+                    check_inode_username(cur_inode, username);
 
                     // update cur_inode
                     disk_readblock(next_inode, &cur_inode);
@@ -408,6 +530,7 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
 }
 
 void FileServer::decompose_path(std::deque<std::string> &names, std::string pathname) {
+
     std::string name;
     for (int i = 1; i < pathname.length(); i++) {
         if (pathname[i] != '/') {
@@ -456,7 +579,7 @@ void FileServer::traverse_fs() {
                 for (int j = 0; j < FS_DIRENTRIES; ++j) {
                     // unused directory
                     if (buf_direntries[j].inode_block == 0) {
-                        break;
+                        continue;
                     }
                     next_inodes.push(buf_direntries[j].inode_block);
                 }
@@ -502,7 +625,7 @@ bool FileServer::check_name_exists_in_dir(fs_inode &inode, std::string name) {
         for (int j = 0; j < FS_DIRENTRIES; ++j) {
             // unused directory
             if (buf_direntries[j].inode_block == 0) {
-                break;
+                continue;
             }
 
             // check if cur_name is found
@@ -596,4 +719,68 @@ int FileServer::get_free_block() {
     int free_block = free_blocks.top();
     free_blocks.pop();
     return free_block;
+}
+
+void FileServer::add_free_block(int block) {
+    free_blocks.push(block);
+}
+
+int FileServer::get_target_inode_block(fs_inode &inode, std::string name,
+                                       DirEntryIndex &direntry_ind,
+                                       fs_direntry* buf_direntries) {
+    // iterate through blocks
+    for (int i = 0; i < inode.size; ++i) {
+        int block = inode.blocks[i];
+
+        // read direntries from block
+        disk_readblock(block, &buf_direntries);
+
+        // store all inode blocks from direntries
+        for (int j = 0; j < FS_DIRENTRIES; ++j) {
+            // unused directory
+            if (buf_direntries[j].inode_block == 0) {
+                continue;
+            }
+
+            // check if cur_name is found
+            if (std::string(buf_direntries[j].name) == name) {
+                direntry_ind.block_index = i;
+                direntry_ind.direntry_offset = j;
+                direntry_ind.block = block;
+                return buf_direntries[j].inode_block;
+            }
+        }
+    }
+
+    // not found
+    std::cerr << "Error: in DELETE, " << name << " does not exist\n";
+    throw Exception();
+}
+
+void FileServer::check_directory_empty(fs_inode &inode) {
+    assert(inode.type == 'd');
+
+    if (inode.size != 0) {
+        std::cerr << "Error: delete target was not empty\n";
+        throw Exception();
+    }
+}
+
+int FileServer::get_direntry_count(fs_direntry* buf_direntries) {
+    int count = 0;
+    for (int i = 0; i < FS_DIRENTRIES; ++i) {
+        if (buf_direntries[i].inode_block != 0) {
+            ++count;
+        }
+    }
+    assert(count != 0);
+    return count;
+}
+
+void FileServer::fix_inode(fs_inode &inode, int target) {
+    // decrement inode size
+    --inode.size;
+    for (int i = target; i < inode.size; ++i) {
+        inode.blocks[i] = inode.blocks[i+1];
+    }
 }
