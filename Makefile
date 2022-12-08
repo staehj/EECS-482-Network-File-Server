@@ -50,3 +50,7 @@ debug%: test%.cpp ${LIBFS_CLIENT}
 test%: test%.cpp ${LIBFS_CLIENT}
 	./createfs_macos
 	${CC} -o $@ $^
+
+test_d%: test%.cpp ${LIBFS_CLIENT}
+	./createfs
+	${CC} -o $@ $^
