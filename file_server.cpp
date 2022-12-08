@@ -488,13 +488,19 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
     int next_inode;
     bool found;
     while (!names.empty()) {
+        std::cout << "remaining:";
+        if (!names.empty()) {
+            for (auto name : names) {
+                std::cout << " " << name;
+            }
+            std::cout << '\n';
+        }
+        else {
+            std::cout << "names is empty\n";
+        }
         std::string cur_name = names.front();
         names.pop_front();
         std::cout << "checking name: " << cur_name << '\n';
-        std::cout << "remaining:";
-        for (auto name : names) {
-            std::cout << " " << name;
-        std::cout << '\n';
 
         // check user has inode permissions
         if (std::string(cur_inode.owner) != ""
