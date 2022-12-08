@@ -120,11 +120,9 @@ int FileServer::handle_message(int connectionfd, int sock) {
         }
 
         // receive_data
-        std::cout << "ASDFASDFSAFDFASFDSFSDAF\n";
         if (data_len < FS_BLOCKSIZE) {
             receive_data(connectionfd, sock, data_len, data);
         }
-        std::cout << "AFTER ASDFASDFSAFDFASFDSFSDAF\n";
 
         handle_request(req_type, request, data, sock);
     }
@@ -487,9 +485,16 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
         return 0;
     }
 
+    int next_inode;
+    bool found;
     while (!names.empty()) {
         std::string cur_name = names.front();
         names.pop_front();
+        std::cout << "checking name: " << cur_name << '\n';
+        std::cout << "remaining:";
+        for (auto name : names) {
+            std::cout << " " << name;
+        std::cout << '\n';
 
         // check user has inode permissions
         if (std::string(cur_inode.owner) != ""
@@ -500,15 +505,17 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
         }
 
         // check inode is dir, not file
-        if (names.empty()) {
+        if (!names.empty()) {
             check_inode_type(cur_inode, 'd');
         }
 
+        found = false;
         // search block in cur_inode for direntry with name cur_name
         for (int i = 0; i < cur_inode.size; ++i) {
             int cur_block = cur_inode.blocks[i];
 
             // read direntries from block
+            std::cout << "foo\n";
             disk_readblock(cur_block, &buf_direntries);
 
             // store all inode blocks from direntries
@@ -521,7 +528,7 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
                 // check if cur_name is found
                 if (std::string(buf_direntries[j].name) == cur_name) {
                     // get lock of this inode
-                    int next_inode = buf_direntries[j].inode_block;
+                    next_inode = buf_direntries[j].inode_block;
                     std::unique_lock<std::mutex> next_lock(block_locks[next_inode]);
                     cur_lock.swap(next_lock);
 
@@ -529,12 +536,23 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
                     check_inode_username(cur_inode, username);
 
                     // update cur_inode
+                    std::cout << "bar\n";
                     disk_readblock(next_inode, &cur_inode);
 
-                    return next_inode;
+                    found = true;
+                    break;
                 }
             }
+
+            if (found) {
+                continue;
+            }
         }
+    }
+
+    if (found) {
+        std::cout << "next_inode: " << next_inode << '\n';
+        return next_inode;
     }
 
     std::cerr << "Error: pathname not found\n";
@@ -554,6 +572,12 @@ void FileServer::decompose_path(std::deque<std::string> &names, std::string path
         }
     }
     names.push_back(name);
+
+    std::cout << "DECOMPOSE PATH OUTPUT:\n";
+    for (auto name : names) {
+        std::cout << " " << name;
+    }
+    std::cout << '\n';
 }
 
 void FileServer::traverse_fs() {
