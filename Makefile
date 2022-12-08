@@ -34,3 +34,10 @@ app: test_spec.cpp ${LIBFS_CLIENT}
 
 clean:
 	rm -f ${FS_OBJS} fs app
+
+debug%: test%.cpp ${LIBFS_CLIENT}
+	${CC} -o $@ $^ -g
+
+test%: test%.cpp ${LIBFS_CLIENT}
+	./createfs_macos
+	${CC} -o $@ $^

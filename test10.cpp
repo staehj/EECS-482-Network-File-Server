@@ -24,20 +24,62 @@ int main(int argc, char *argv[]) {
     fs_clientinit(server, server_port);
 
     status = fs_create("user1", "/dir", 'd');
-    assert(!status);
-
-    status = fs_create("user1", "/dir/file", 'f');
     // assert(!status);
 
-    status = fs_writeblock("user1", "/dir/file", 0, writedata);
+    status = fs_create("user1", "/dir", 'd');
+    // assert(!status);
+
+    status = fs_create("user1", "/dir", 'f');
+    // assert(!status);
+
+    status = fs_create("user2", "/dir", 'f');
     // assert(!status);
 
     status = fs_readblock("user1", "/dir/file", 0, readdata);
     // assert(!status);
 
-    status = fs_delete("user1", "/dir/file");
+    status = fs_readblock("user1", "/dir", 0, readdata);
+    // assert(!status);
+
+    status = fs_readblock("user1", "/lmao", 0, readdata);
+    // assert(!status);
+
+    status = fs_create("user2", "/dir/file", 'f');
+    // assert(!status);
+
+    status = fs_create("user1", "/dir/file", 'f');
+    // assert(!status);
+
+    status = fs_writeblock("user1", "/dir/file", 1, writedata);
+    // assert(!status);
+
+    status = fs_writeblock("user1", "/dir/file", 0, writedata);
+    // assert(!status);
+
+    status = fs_writeblock("user1", "/dir/file", 2341534, writedata);
+    // assert(!status);
+
+    status = fs_writeblock("user2", "/dir/file", 1, writedata);
+    // assert(!status);
+
+    status = fs_writeblock("user2", "/dir/file", 0, writedata);
+    // assert(!status);
+
+    status = fs_readblock("user2", "/dir/file", 0, readdata);
     // assert(!status);
 
     status = fs_delete("user1", "/dir");
+    // assert(!status);
+
+    status = fs_delete("user2", "/dir/file");
+    // assert(!status);
+
+    status = fs_delete("user1", "/dir/file");
+    // assert(!status);
+
+    status = fs_create("user1", "/dir/dir/dir", 'd');
+    // assert(!status);
+
+    status = fs_create("user1", "/dir/dir", 'd');
     // assert(!status);
 }

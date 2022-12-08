@@ -76,23 +76,20 @@ int FileServer::run(int queue_size) {
 			return -1;
 		}
 
-        // start handle_message through thread
-        try {
-            // std::thread t(&FileServer::thread_start, this, connectionfd, sock);
-            // t.detach();
-            ThreadRAII(this, connectionfd, sock);
-        }
-        catch (Exception &exception) {
-            close(connectionfd);
-        }
-
+        ThreadRAII(this, connectionfd, sock);
 	}
 }
 
 void FileServer::thread_start(int connectionfd, int sock) {
-    if (handle_message(connectionfd, sock) == -1) {
-        perror("Error: handle_connection failed\n");
-        throw Exception();
+    // start handle_message through thread
+    try {
+        if (handle_message(connectionfd, sock) == -1) {
+            perror("Error: handle_connection failed\n");
+            throw Exception();
+        }
+    }
+    catch (Exception &exception) {
+        close(connectionfd);
     }
 }
 
@@ -247,6 +244,7 @@ std::string FileServer::check_type(std::stringstream &msg_ss) {
 
 void FileServer::handle_request(RequestType type, std::string request, const char* data,
                                 int sock) {
+    std::cout << "---------------------\n";
     switch(type) {
         case RequestType::READ:
             assert(data == nullptr);
@@ -275,6 +273,7 @@ void FileServer::handle_request(RequestType type, std::string request, const cha
             std::cerr << "Error: this should never print...\n";
             throw Exception();
     }
+    std::cout << "---------------------\n";
 }
 
 void FileServer::handle_read(std::string request, int sock) {
@@ -337,8 +336,16 @@ void FileServer::handle_write(std::string request, const char* data, int sock) {
 
     // writing to block immediately after end of file
     if (block == cur_inode.size) {
+        // check inode size is less than FS_MAXFILEBLOCKS
+        if (cur_inode.size >= FS_MAXFILEBLOCKS) {
+            std::cerr << "Error: inode ran out of blocks (>124)\n";
+            throw Exception();
+        }
+
         // get free block
         int new_block = get_free_block();
+
+        std::cout << "in WRITE: new_block: " << new_block << '\n';
 
         // write data from input to free block (disk)
         disk_writeblock(new_block, data);
@@ -346,11 +353,12 @@ void FileServer::handle_write(std::string request, const char* data, int sock) {
         // increment size
         ++cur_inode.size;
 
+
         // add new block number to inode blocks
         cur_inode.blocks[block] = new_block;
 
         // write inode to disk
-        disk_writeblock(cur_block, data);
+        disk_writeblock(cur_block, &cur_inode);
     }
     else {
         // write data from input to given block (disk)
@@ -418,6 +426,7 @@ void FileServer::handle_delete(std::string request, int sock) {
     // get target inode block number
     DirEntryIndex direntry_index;
     fs_direntry buf_direntries [FS_DIRENTRIES];
+    memset(buf_direntries, 0, sizeof(buf_direntries));
     int target_inode_block = get_target_inode_block(cur_inode, new_name, direntry_index,
                                                     buf_direntries);
 
@@ -498,17 +507,10 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
         else {
             std::cout << "names is empty\n";
         }
+
         std::string cur_name = names.front();
         names.pop_front();
         std::cout << "checking name: " << cur_name << '\n';
-
-        // check user has inode permissions
-        if (std::string(cur_inode.owner) != ""
-        && std::string(cur_inode.owner) != username) {
-            std::cerr << "Error: user " << username << " permission denied, owner was "
-                      << cur_inode.owner << "\n";
-            throw Exception();
-        }
 
         // check inode is dir, not file
         if (!names.empty()) {
@@ -538,12 +540,12 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
                     std::unique_lock<std::mutex> next_lock(block_locks[next_inode]);
                     cur_lock.swap(next_lock);
 
-                    // check user permissions for inode
-                    check_inode_username(cur_inode, username);
-
                     // update cur_inode
                     std::cout << "bar\n";
                     disk_readblock(next_inode, &cur_inode);
+
+                    // check user permissions for inode
+                    check_inode_username(cur_inode, username);
 
                     found = true;
                     break;
@@ -689,6 +691,12 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
 
     // new block was created for direntry
     if (cur_inode.size == ind.block_index) {
+        // check inode size is less than FS_MAXFILEBLOCKS
+        if (cur_inode.size >= FS_MAXFILEBLOCKS) {
+            std::cerr << "Error: inode ran out of blocks (>124)\n";
+            throw Exception();
+        }
+
         cur_inode_changed = true;
 
         // if new block assigned, link cur_inode to new block
@@ -711,13 +719,13 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
     new_inode.size = 0;
 
     // write inode to disk
-    int ionde_block = get_free_block();
-    disk_writeblock(ionde_block, &new_inode);
+    int inode_block = get_free_block();
+    disk_writeblock(inode_block, &new_inode);
 
     // add new direntry
     fs_direntry new_direntry;
     strcpy(new_direntry.name, name.c_str());
-    new_direntry.inode_block = ionde_block;
+    new_direntry.inode_block = inode_block;
     buf_direntries[ind.direntry_offset] = new_direntry;
 
     // write new direntry to disk
@@ -775,7 +783,7 @@ int FileServer::get_target_inode_block(fs_inode &inode, std::string name,
         int block = inode.blocks[i];
 
         // read direntries from block
-        disk_readblock(block, &buf_direntries);
+        disk_readblock(block, buf_direntries);
 
         // store all inode blocks from direntries
         for (int j = 0; j < FS_DIRENTRIES; ++j) {

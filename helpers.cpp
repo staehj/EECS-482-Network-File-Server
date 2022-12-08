@@ -72,10 +72,10 @@ int get_port_number(int sockfd) {
 }
 
 int send_bytes(int sock, const char* msg, size_t message_len) {
-	// Call send() enough times to send all the data
 	size_t sent = 0;
 	do {
 		ssize_t n = send(sock, msg + sent, message_len - sent, MSG_NOSIGNAL);
+		// ssize_t n = send(sock, msg + sent, message_len - sent, 0);
         if (n == -1) {
             perror("send failed: ");
             break;  // ignore send failure as per piazza

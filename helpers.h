@@ -29,20 +29,6 @@ struct DirEntryIndex {
         : block_index(block_index), direntry_offset(direntry_offset), block(block) {};
 };
 
-// class ThreadRAII {
-// public:
-//     ThreadRAII(FileServer* fs, int connectionfd, int sock) {
-//         t = std::thread(&FileServer::thread_start, fs, connectionfd, sock);
-//     }
-
-//     ~ThreadRAII() {
-//         t.detach();
-//     }
-
-// private:
-//     std::thread t;
-// };
-
 int make_server_sockaddr(struct sockaddr_in *addr, int port);
 
 int make_client_sockaddr(struct sockaddr_in *addr, const char *hostname, int port);
