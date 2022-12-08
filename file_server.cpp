@@ -102,39 +102,35 @@ int FileServer::handle_message(int connectionfd, int sock) {
 	memset(buf, 0, sizeof(buf));
 
     // receive into buf (until null character is found)
-    // TODO: make exceptions and put this into try-catch
     int buf_len = receive_until_null(connectionfd, sock, buf);
     std::string request = std::string(buf);
 
     // parse
     RequestType req_type = parse(request);
 
-    std::cout << "before send\n";
-    send_bytes(sock, request.c_str(), request.size() + 1);
-    std::cout << "sent: " << request.c_str() << "\n";
-
     // check if request type is write
     if (req_type == RequestType::WRITE) {
         // save remaining input to data
         char data[FS_BLOCKSIZE];
         memset(data, 0, sizeof(data));
+
         int data_len = buf_len - (request.length() + 1);
         for (int i = 0; i < data_len; ++i) {
             data[i] = buf[request.length() + 1 + i];
-        }    
+        }
 
         // receive_data
-        receive_data(connectionfd, sock, data_len, data);
+        std::cout << "ASDFASDFSAFDFASFDSFSDAF\n";
+        if (data_len < FS_BLOCKSIZE) {
+            receive_data(connectionfd, sock, data_len, data);
+        }
+        std::cout << "AFTER ASDFASDFSAFDFASFDSFSDAF\n";
 
         handle_request(req_type, request, data, sock);
     }
     else {
         handle_request(req_type, request, nullptr, sock);
     }
-
-    std::cout << "before send\n";
-    send_bytes(sock, request.c_str(), request.size() + 1);
-    std::cout << "sent: " << request.c_str() << "\n";
 
 	// close connection
 	close(connectionfd);
@@ -256,26 +252,26 @@ void FileServer::handle_request(RequestType type, std::string request, const cha
     switch(type) {
         case RequestType::READ:
             assert(data == nullptr);
-            std::cout << "calling handle_read with request:\n" << request << '\n';
+            std::cout << "handle_read: START\n" << request << '\n';
             handle_read(request, sock);
-            std::cout << "handle_read ended\n";
+            std::cout << "handle_read: END\n";
             break;
         case RequestType::WRITE:
-            std::cout << "calling handle_write with request:\n" << request << '\n';
+            std::cout << "handle_write: START\n" << request << '\n';
             handle_write(request, data, sock);
-            std::cout << "handle_write ended\n";
+            std::cout << "handle_write: END\n";
             break;
         case RequestType::CREATE:
             assert(data == nullptr);
-            std::cout << "calling handle_create with request:\n" << request << '\n';
+            std::cout << "handle_create: START\n" << request << '\n';
             handle_create(request, sock);
-            std::cout << "handle_create ended\n";
+            std::cout << "handle_create: END\n";
             break;
         case RequestType::DELETE:
             assert(data == nullptr);
-            std::cout << "calling handle_delete with request:\n" << request << '\n';
+            std::cout << "handle_delete: START\n" << request << '\n';
             handle_delete(request, sock);
-            std::cout << "handle_delete ended\n";
+            std::cout << "handle_delete: END\n";
             break;
         default:
             std::cerr << "Error: this should never print...\n";
@@ -377,23 +373,18 @@ void FileServer::handle_create(std::string request, int sock) {
     std::deque<std::string> names;
     decompose_path(names, pathname);
 
-    std::cout << "a" << '\n';
-
     // remove last inode name
     std::string new_name = names.back();
     names.pop_back();
 
-    std::cout << "b" << '\n';
     // check it exists
     std::unique_lock<std::mutex> cur_lock(block_locks[0]);
     fs_inode cur_inode;
     int cur_block = find_path(names, username, cur_lock, cur_inode);
 
-    std::cout << "c" << '\n';
     // check that inode is directory
     check_inode_type(cur_inode, 'd');
 
-    std::cout << "d" << '\n';
     // check if file/dir with name new_name already exists
     if (check_name_exists_in_dir(cur_inode, new_name)) {
         std::cerr << "Error: in CREATE, name " << new_name << " already existed in "
@@ -401,15 +392,11 @@ void FileServer::handle_create(std::string request, int sock) {
         throw Exception();
     }
 
-    std::cout << "e" << '\n';
     // create new thing (file or directory)
     create_inode(cur_inode, cur_block, username, new_name, type);
 
-    std::cout << "f" << '\n';
-    // // send request to client
-    // send_bytes(sock, request.c_str(), request.size() + 1);
-
-    std::cout << "g" << '\n';
+    // send request to client
+    send_bytes(sock, request.c_str(), request.size() + 1);
 }
 
 void FileServer::handle_delete(std::string request, int sock) {
@@ -513,7 +500,9 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
         }
 
         // check inode is dir, not file
-        check_inode_type(cur_inode, 'd');
+        if (names.empty()) {
+            check_inode_type(cur_inode, 'd');
+        }
 
         // search block in cur_inode for direntry with name cur_name
         for (int i = 0; i < cur_inode.size; ++i) {
@@ -628,7 +617,7 @@ void FileServer::check_inode_type(fs_inode &cur_inode, char type) {
 }
 
 void FileServer::check_inode_username(fs_inode &cur_inode, std::string username) {
-    if (std::string(cur_inode.owner) != username) {
+    if (std::string(cur_inode.owner) != username && std::string(cur_inode.owner) != "") {
         std::cerr << "Error: inode had owner " << cur_inode.owner << ", client sent "
                   << username << '\n';
         throw Exception();
@@ -703,10 +692,6 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
 
     // write new direntry to disk
     disk_writeblock(ind.block, &buf_direntries);
-
-    if (cur_block == 0) {
-        std::cout << "cur_inode_changed: " << cur_inode_changed<< '\n';
-    }
 
     // write cur_inode to disk if changed
     if (cur_inode_changed) {

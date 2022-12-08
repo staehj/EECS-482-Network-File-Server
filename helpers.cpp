@@ -12,6 +12,7 @@
 #include <unistd.h>		// stderr
 #include <vector>
 
+#include "file_server.h"
 #include "fs_server.h"
 
 
@@ -72,24 +73,16 @@ int get_port_number(int sockfd) {
 
 int send_bytes(int sock, const char* msg, size_t message_len) {
 	// Call send() enough times to send all the data
-  std::cout << "message_len: " << message_len << '\n';
-  std::cout << "std::string(msg): " << std::string(msg) << '\n';
 	size_t sent = 0;
 	do {
-        // std::cout << "sent: " << sent << "\n";
 		ssize_t n = send(sock, msg + sent, message_len - sent, MSG_NOSIGNAL);
-    if (n == -1) {
-        // perror("send failed: ");
-        continue;
-    }
-    std::cout << "sent before: " << sent << '\n';
-    std::cout << "n: " << n << '\n';
-		sent += n;
-    std::cout << "sent after: " << sent << '\n';
+        if (n == -1) {
+            perror("send failed: ");
+            break;  // ignore send failure as per piazza
+        }
+        sent += n;
 	} while (sent < message_len);
 
-    std::cout << "meslen: " << message_len << '\n';
-    std::cout << "sent: " << sent << '\n';
     return 0;
 }
 
@@ -104,13 +97,14 @@ int receive_until_null(int connectionfd, int sock, char* buf) {
         rval = recv(connectionfd, buf + recvd, MAX_MESSAGE_SIZE - recvd, 0);
         if (rval == -1) {
             perror("Error reading stream message");
-            // TODO: handle error
+            throw Exception();
         }
 
         recvd += rval;
 
         if (recvd > MAX_MESSAGE_SIZE) {
-            // TODO: handle error: invalid
+            perror("Error: received more bytes than maximum allowed before NULL\n");
+            throw Exception();
         }
         for (; i < recvd; ++i) {
             if (buf[i] == '\0') {
@@ -130,10 +124,10 @@ void receive_data(int connectionfd, int sock, int data_len, char* data) {
     ssize_t rval = recv(connectionfd, data + data_len, FS_BLOCKSIZE - data_len, MSG_WAITALL);
     if (rval == 0) {
         perror("Client closed before sending all data\n");
-        // TODO: handle error
+        throw Exception();
     }
     else if (rval == -1) {
         perror("Error reading stream message");
-        // TODO: handle error
+        throw Exception();
     }
 }

@@ -24,20 +24,20 @@ int main(int argc, char *argv[]) {
     fs_clientinit(server, server_port);
 
     status = fs_create("user1", "/dir", 'd');
-    assert(!status);
+    // assert(!status);
 
     status = fs_create("user1", "/dir/file", 'f');
-    assert(!status);
+    // assert(!status);
 
     status = fs_writeblock("user1", "/dir/file", 0, writedata);
-    assert(!status);
+    // assert(!status);
 
     status = fs_readblock("user1", "/dir/file", 0, readdata);
-    assert(!status);
+    // assert(!status);
 
     status = fs_delete("user1", "/dir/file");
-    assert(!status);
+    // assert(!status);
 
     status = fs_delete("user1", "/dir");
-    assert(!status);
+    // assert(!status);
 }
