@@ -18,6 +18,7 @@ all: fs app
 
 # Compile the file server and tag this compilation
 fs: ${FS_OBJS} ${LIBFS_SERVER}
+	./createfs_macos
 	./autotag.sh
 	${CC} -o $@ $^ -pthread -ldl
 

@@ -109,6 +109,10 @@ int FileServer::handle_message(int connectionfd, int sock) {
     // parse
     RequestType req_type = parse(request);
 
+    std::cout << "before send\n";
+    send_bytes(sock, request.c_str(), request.size() + 1);
+    std::cout << "sent: " << request.c_str() << "\n";
+
     // check if request type is write
     if (req_type == RequestType::WRITE) {
         // save remaining input to data
@@ -127,6 +131,10 @@ int FileServer::handle_message(int connectionfd, int sock) {
     else {
         handle_request(req_type, request, nullptr, sock);
     }
+
+    std::cout << "before send\n";
+    send_bytes(sock, request.c_str(), request.size() + 1);
+    std::cout << "sent: " << request.c_str() << "\n";
 
 	// close connection
 	close(connectionfd);
@@ -398,8 +406,8 @@ void FileServer::handle_create(std::string request, int sock) {
     create_inode(cur_inode, cur_block, username, new_name, type);
 
     std::cout << "f" << '\n';
-    // send request to client
-    send_bytes(sock, request.c_str(), request.size() + 1);
+    // // send request to client
+    // send_bytes(sock, request.c_str(), request.size() + 1);
 
     std::cout << "g" << '\n';
 }
