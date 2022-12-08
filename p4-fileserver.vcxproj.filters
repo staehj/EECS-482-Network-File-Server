@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\tests">
+      <UniqueIdentifier>{dd68906d-0c08-474c-93fe-b86599f463bb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="fs_client.h">
@@ -75,8 +78,41 @@
     <ClCompile Include="file_server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="fs_server.cpp">
+    <ClCompile Include="file_server_old.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="helpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_spec.cpp">
+      <Filter>Source Files\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="test1.cpp">
+      <Filter>Source Files\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="test2.cpp">
+      <Filter>Source Files\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="test3.cpp">
+      <Filter>Source Files\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="test4.cpp">
+      <Filter>Source Files\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="test5.cpp">
+      <Filter>Source Files\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="test6.cpp">
+      <Filter>Source Files\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="test7.cpp">
+      <Filter>Source Files\tests</Filter>
+    </ClCompile>
+    <ClCompile Include="test8.cpp">
+      <Filter>Source Files\tests</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

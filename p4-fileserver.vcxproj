@@ -151,7 +151,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="file_server.cpp" />
-    <ClCompile Include="fs_server.cpp" />
+    <ClCompile Include="file_server_old.cpp" />
+    <ClCompile Include="helpers.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="test1.cpp" />
+    <ClCompile Include="test2.cpp" />
+    <ClCompile Include="test3.cpp" />
+    <ClCompile Include="test4.cpp" />
+    <ClCompile Include="test5.cpp" />
+    <ClCompile Include="test6.cpp" />
+    <ClCompile Include="test7.cpp" />
+    <ClCompile Include="test8.cpp" />
+    <ClCompile Include="test_spec.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
