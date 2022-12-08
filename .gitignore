@@ -1,4 +1,4 @@
 .DS_STORE
-.vcxproj
-.vcxproj.user
-.vcxproj.filters
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
