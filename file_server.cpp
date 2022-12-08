@@ -24,7 +24,7 @@ FileServer::FileServer(int port_number) : block_locks(FS_DISKSIZE) {
     // run server
     port = port_number;
     if (run(30) == -1) {
-        std::cout << "Error: run failed\n";
+        std::cerr << "Error: run failed\n";
         exit(1);
     }
 }
@@ -244,36 +244,26 @@ std::string FileServer::check_type(std::stringstream &msg_ss) {
 
 void FileServer::handle_request(RequestType type, std::string request, const char* data,
                                 int connectionfd) {
-    std::cout << "---------------------\n";
     switch(type) {
         case RequestType::READ:
             assert(data == nullptr);
-            std::cout << "handle_read: START\n" << request << '\n';
             handle_read(request, connectionfd);
-            std::cout << "handle_read: END\n";
             break;
         case RequestType::WRITE:
-            std::cout << "handle_write: START\n" << request << '\n';
             handle_write(request, data, connectionfd);
-            std::cout << "handle_write: END\n";
             break;
         case RequestType::CREATE:
             assert(data == nullptr);
-            std::cout << "handle_create: START\n" << request << '\n';
             handle_create(request, connectionfd);
-            std::cout << "handle_create: END\n";
             break;
         case RequestType::DELETE:
             assert(data == nullptr);
-            std::cout << "handle_delete: START\n" << request << '\n';
             handle_delete(request, connectionfd);
-            std::cout << "handle_delete: END\n";
             break;
         default:
             std::cerr << "Error: this should never print...\n";
             throw Exception();
     }
-    std::cout << "---------------------\n";
 }
 
 void FileServer::handle_read(std::string request, int connectionfd) {
@@ -344,8 +334,6 @@ void FileServer::handle_write(std::string request, const char* data, int connect
 
         // get free block
         int new_block = get_free_block();
-
-        std::cout << "in WRITE: new_block: " << new_block << '\n';
 
         // write data from input to free block (disk)
         disk_writeblock(new_block, data);
@@ -497,20 +485,8 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
     int next_inode;
     bool found;
     while (!names.empty()) {
-        std::cout << "remaining:";
-        if (!names.empty()) {
-            for (auto name : names) {
-                std::cout << " " << name;
-            }
-            std::cout << '\n';
-        }
-        else {
-            std::cout << "names is empty\n";
-        }
-
         std::string cur_name = names.front();
         names.pop_front();
-        std::cout << "checking name: " << cur_name << '\n';
 
         // check inode is dir, not file
         if (!names.empty()) {
@@ -523,7 +499,6 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
             int cur_block = cur_inode.blocks[i];
 
             // read direntries from block
-            std::cout << "foo\n";
             disk_readblock(cur_block, &buf_direntries);
 
             // store all inode blocks from direntries
@@ -541,7 +516,6 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
                     cur_lock.swap(next_lock);
 
                     // update cur_inode
-                    std::cout << "bar\n";
                     disk_readblock(next_inode, &cur_inode);
 
                     // check user permissions for inode
@@ -559,7 +533,6 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
     }
 
     if (found) {
-        std::cout << "next_inode: " << next_inode << '\n';
         return next_inode;
     }
 
@@ -580,12 +553,6 @@ void FileServer::decompose_path(std::deque<std::string> &names, std::string path
         }
     }
     names.push_back(name);
-
-    std::cout << "DECOMPOSE PATH OUTPUT:\n";
-    for (auto name : names) {
-        std::cout << " " << name;
-    }
-    std::cout << '\n';
 }
 
 void FileServer::traverse_fs() {
