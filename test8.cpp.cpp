@@ -5,9 +5,6 @@
 
 using std::cout;
 
-// make 9 something and delete 1
-// but this time 9th is a directory
-
 int main(int argc, char* argv[]) {
     char* server;
     int server_port;
@@ -28,35 +25,12 @@ int main(int argc, char* argv[]) {
     fs_clientinit(server, server_port);
 
     status = fs_create("user1", "/dir", 'd');
-    assert(!status);
-
-    status = fs_create("user1", "/dir/dir1", 'd');
-    assert(!status);
-
-    status = fs_create("user1", "/dir/dir2", 'd');
-    assert(!status);
-
-    status = fs_create("user1", "/dir/dir3", 'd');
-    assert(!status);
-
-    status = fs_create("user1", "/dir/dir4", 'd');
-    assert(!status);
-
-    status = fs_create("user1", "/dir/dir5", 'd');
-    assert(!status);
-
-    status = fs_create("user1", "/dir/dir6", 'd');
-    assert(!status);
-
-    status = fs_create("user1", "/dir/dir7", 'd');
-    assert(!status);
-
-    status = fs_create("user1", "/dir/dir8", 'd');
-    assert(!status);
 
     status = fs_create("user1", "/dir/file", 'f');
-    assert(!status);
 
-    status = fs_delete("user1", "/dir/dir3");
-    assert(!status);
+    status = fs_writeblock("user1", "/dir/file", 0, readdata);
+
+    status = fs_writeblock("user1", "/dir/file", 1, readdata);
+
+    status = fs_delete("user1", "/dir/file/file2"); //
 }

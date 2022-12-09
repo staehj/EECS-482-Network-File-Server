@@ -5,14 +5,11 @@
 
 using std::cout;
 
-// make 9 directories and delete 1
-
-int main(int argc, char* argv[]) {
-    char* server;
+int main(int argc, char *argv[]) {
+    char *server;
     int server_port;
 
-    const char* writedata1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    // const char* writedata2 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const char *writedata_contains_null = "In this project, you will implement a multi-threaded network file server.\0 Clients that use your file server will interact with it via network messages.\0 This project will help you understand hierarchical file systems, socket programming, client-server systems, and network protocols, and it will give you experience building a substantial multi-threaded program with fine-grained locking\0. Since clients are untrusted, your file server should be careful in how it handles network input.\0 Avoid making assumptions about the content and size of the requests until you have verified those assumptions.";
 
     char readdata[FS_BLOCKSIZE];
     int status;
@@ -26,22 +23,37 @@ int main(int argc, char* argv[]) {
 
     fs_clientinit(server, server_port);
 
-    fs_create("", "/dir", 'd');
-    fs_create("user1", "", 'd');
-    fs_create("user1", "/dir", ' ');
-    fs_create("", "", ' ');
+    ///////// File System Initialization
+    // fs_create("user1", "/dir1", 'd');
+    // fs_create("user1", "/dir2", 'd');
+    // fs_create("user1", "/dir3", 'd');
+    // fs_create("user1", "/dir4", 'd');
+    // fs_create("user1", "/dir5", 'd');
+    // fs_create("user1", "/dir6", 'd');
+    // fs_create("user1", "/dir7", 'd');
+    // fs_create("user1", "/dir8", 'd');
 
-    fs_readblock("", "/dir", 0, readdata);
-    fs_readblock("user1", "", 0, readdata);
-    fs_readblock("user1", "/dir", -1, readdata);
-    fs_readblock("", "", -1, readdata);
+    // fs_create("user1", "/dir9", 'd');
+    // fs_create("user1", "/dir10", 'd');
+    // fs_create("user1", "/dir11", 'd');
+    // fs_create("user1", "/dir12", 'd');
+    // fs_create("user1", "/dir13", 'd');
+    // fs_create("user1", "/dir14", 'd');
+    // fs_create("user1", "/dir15", 'd');
+    // fs_create("user1", "/dir16", 'd');
 
-    fs_writeblock("", "/dir", 0, writedata1);
-    fs_writeblock("user1", "", 0, writedata1);
-    fs_writeblock("user1", "/dir", -1, writedata1);
-    fs_writeblock("", "", -1, writedata1);
+    // fs_delete("user1", "/dir1");
+    // fs_delete("user1", "/dir9");
+    /////////
 
-    fs_delete("", "/dir");
-    fs_delete("user1", "");
-    fs_delete("", "");
+    fs_create("user1", "/dir1/file", 'f');
+    fs_create("user1", "/dir1/inner", 'd');
+
+    fs_create("user1", "/dir9/file", 'f');
+    fs_create("user1", "/dir9/inner", 'd');
+
+    fs_create("user1", "/dir1", 'd');
+    fs_create("user1", "/dir9", 'd');
+
+    fs_create("user1", "/file", 'f');
 }

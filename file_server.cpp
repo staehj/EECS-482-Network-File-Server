@@ -316,7 +316,7 @@ void FileServer::handle_read(std::string request, int connectionfd) {
     // check it exists
     std::unique_lock<std::mutex> cur_lock(block_locks[0]);
     fs_inode cur_inode;
-    find_path(names, username, cur_lock, cur_inode);
+    find_path(names, username, cur_lock, cur_inode, false);
 
     // check that inode is file
     check_inode_type(cur_inode, 'f');
@@ -352,7 +352,7 @@ void FileServer::handle_write(std::string request, const char* data, int connect
     // check it exists
     std::unique_lock<std::mutex> cur_lock(block_locks[0]);
     fs_inode cur_inode;
-    int cur_block = find_path(names, username, cur_lock, cur_inode);
+    int cur_block = find_path(names, username, cur_lock, cur_inode, false);
     // check that inode is file
     check_inode_type(cur_inode, 'f');
 
@@ -423,10 +423,7 @@ void FileServer::handle_create(std::string request, int connectionfd) {
     // check it exists
     std::unique_lock<std::mutex> cur_lock(block_locks[0]);  // TODO: should this be placed as soon as a request is received?
     fs_inode cur_inode;
-    int cur_block = find_path(names, username, cur_lock, cur_inode);
-
-    // check that inode is directory
-    check_inode_type(cur_inode, 'd');
+    int cur_block = find_path(names, username, cur_lock, cur_inode, true);
 
     fs_direntry block_direntries [FS_DIRENTRIES];
     // zero initialize new
@@ -470,7 +467,7 @@ void FileServer::handle_delete(std::string request, int connectionfd) {
     // check it exists
     std::unique_lock<std::mutex> cur_lock(block_locks[0]);
     fs_inode cur_inode;
-    int cur_block = find_path(names, username, cur_lock, cur_inode);
+    int cur_block = find_path(names, username, cur_lock, cur_inode, true);
 
     // get target inode block number
     DirEntryIndex direntry_index;
@@ -535,7 +532,7 @@ void FileServer::handle_delete(std::string request, int connectionfd) {
 }
 
 int FileServer::find_path(std::deque<std::string> &names, std::string username,
-                           std::unique_lock<std::mutex> &cur_lock, fs_inode &cur_inode) {
+                           std::unique_lock<std::mutex> &cur_lock, fs_inode &cur_inode, bool is_CR_or_DE) {
     // temporary buffers
     fs_direntry buf_direntries [FS_DIRENTRIES];
     // zero initialize new
@@ -561,8 +558,8 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
         names.pop_front();
 
         // check inode is dir, not file
-        if (!names.empty()) {
-            check_inode_type(cur_inode, 'd');
+        if (!names.empty() || is_CR_or_DE) {
+            check_inode_type(cur_inode, 'd');  ////////
         }
 
         found = false;
@@ -655,6 +652,8 @@ void FileServer::decompose_path(std::deque<std::string> &names, std::string path
 }
 
 void FileServer::traverse_fs() {
+    free_blocks_lock.lock();
+
     // temporary buffers
     fs_inode buf_inode;
     fs_direntry buf_direntries [FS_DIRENTRIES];
@@ -708,6 +707,8 @@ void FileServer::traverse_fs() {
     for (uint32_t block_num : free_blocks_set) {
         free_blocks.push(block_num);
     }
+
+    free_blocks_lock.unlock();
 }
 
 void FileServer::check_inode_type(fs_inode &cur_inode, char type) {
@@ -795,6 +796,9 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
     if (cur_inode.size == (uint32_t) ind.block_index) {
         // check inode size is less than FS_MAXFILEBLOCKS
         if (cur_inode.size >= FS_MAXFILEBLOCKS) {
+            // free the reserved block
+            add_free_block(ind.block);
+
             cout_lock.lock();
             std::cout << "Error: inode ran out of blocks (>124)\n";
             cout_lock.unlock();
@@ -841,6 +845,8 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
 }
 
 int FileServer::get_free_block() {
+    free_blocks_lock.lock();
+
     if (free_blocks.empty()) {
         cout_lock.lock();
         std::cout << "Error: no free block remaining\n";
@@ -850,11 +856,16 @@ int FileServer::get_free_block() {
 
     int free_block = free_blocks.top();
     free_blocks.pop();
+
+
+    free_blocks_lock.unlock();
     return free_block;
 }
 
 void FileServer::add_free_block(int block) {
+    free_blocks_lock.lock();
     free_blocks.push(block);
+    free_blocks_lock.unlock();
 }
 
 int FileServer::get_target_inode_block(fs_inode &inode, std::string name,

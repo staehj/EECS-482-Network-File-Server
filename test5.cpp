@@ -5,14 +5,11 @@
 
 using std::cout;
 
-// make 9 directories and delete 1
-
-int main(int argc, char* argv[]) {
-    char* server;
+int main(int argc, char *argv[]) {
+    char *server;
     int server_port;
 
-    const char* writedata1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    // const char* writedata2 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const char *writedata = "In this project, you will implement a multi-threaded network file server.\0 Clients that use your file server will interact with it via network messages.\0 This project will help you understand hierarchical file systems, socket programming, client-server systems, and network protocols, and it will give you experience building a substantial multi-threaded program with fine-grained locking\0. Since clients are untrusted, your file server should be careful in how it handles network input.\0 Avoid making assumptions about the content and size of the requests until you have verified those assumptions.";
 
     char readdata[FS_BLOCKSIZE];
     int status;
@@ -27,20 +24,19 @@ int main(int argc, char* argv[]) {
     fs_clientinit(server, server_port);
 
     fs_create("user1", "/dir", 'd');
-
-    fs_create("user2", "/dir/file", 'f'); // error
-
     fs_create("user1", "/dir/file", 'f');
 
-    fs_readblock("user1", "/dir/file", 0, readdata); // error
+    fs_create("user1", "/dir/file/invalid", 'f');
+    fs_create("user1", "/dir/file/invalid", 'd');
 
-    fs_writeblock("user1", "/dir/file", 0, writedata1);
+    fs_delete("user1", "/dir/file/invalid");
 
-    fs_readblock("user1", "/dir/file", 0, readdata);
+    fs_writeblock("user1", "/dir/file", 0, writedata);
+    fs_writeblock("user1", "/dir/file", 1, writedata);
+    fs_readblock("user1", "/dir/", 0, readdata);
 
-    fs_writeblock("user1", "/dir/file", 1, writedata1);
+    fs_create("user1", "/dir/file/invalid", 'f');
+    fs_create("user1", "/dir/file/invalid", 'd');
 
-    fs_readblock("user1", "/dir/file", 1, readdata);
-
-    fs_readblock("user2", "/dir/file", 1, readdata); // error
+    fs_delete("user1", "/dir/file/invalid");
 }

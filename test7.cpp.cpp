@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     // error: write request block offset out of range
     status = fs_writeblock("user1", "/dir/file", 2, writedata);
     // assert(!status);
-
+    
     // error: write request w/o user permission
     status = fs_writeblock("user2", "/dir/file", 0, writedata);
     // assert(!status);
@@ -96,6 +96,26 @@ int main(int argc, char *argv[]) {
     status = fs_writeblock("user1", "/dir/eecs281/midterm", 0, writedata);
     // assert(!status);
 
+
     status = fs_delete("user1", "/dir/eecs281");
+    // assert(!status);
+
+    status = fs_create("user5", "/dir", 'd');
+    // assert(!status);
+
+    status = fs_create("user5", "/dir/file", 'f');
+    // assert(!status);
+
+    // error: parent is file
+    status = fs_create("user5", "/dir/file/file5", 'f');
+    // assert(!status);
+
+    status = fs_create("user5", "/dir/dir5", 'd');
+    // assert(!status);
+
+    status = fs_create("user5", "/dir/dir5/dir55", 'f');
+    // assert(!status);
+
+    status = fs_create("user5", "/dir/dir5/dir55/dir555", 'f');
     // assert(!status);
 }

@@ -63,7 +63,8 @@ private:
     void handle_delete(std::string request, int connectionfd);
 
     int find_path(std::deque<std::string> &names, std::string username,
-                  std::unique_lock<std::mutex> &cur_lock, fs_inode &cur_inode);
+                  std::unique_lock<std::mutex> &cur_lock, fs_inode &cur_inode,
+                  bool is_CR_or_DE);
 
     void decompose_path(std::deque<std::string> &names, std::string pathname);
 
@@ -92,8 +93,9 @@ private:
     void fix_inode(fs_inode &inode, int target);
 
     std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<uint32_t> >
-        free_blocks;  // TODO?: lock required?
+        free_blocks;
     std::vector<std::mutex> block_locks;
+    std::mutex free_blocks_lock;
     int port;
 };
 
