@@ -9,7 +9,8 @@ int main(int argc, char *argv[]) {
     char *server;
     int server_port;
 
-    const char *writedata = "In this project, you will implement a multi-threaded network file server. Clients that use your file server will interact with it via network messages. This project will help you understand hierarchical file systems, socket programming, client-server systems, and network protocols, and it will give you experience building a substantial multi-threaded program with fine-grained locking.";
+    const char *writedata1 = "In this project, you will implement a multi-threaded network file server. Clients that use your file server will interact with it via network messages. This project will help you understand hierarchical file systems, socket programming, client-server systems, and network protocols, and it will give you experience building a substantial multi-threaded program with fine-grained locking.In this project, you will implement a multi-threaded network file server. Clients that use your file server will interactDONE";
+    const char *writedata2 = "In this project, you will implement a multi-threaded network file server. Clients that use your file server will interact with it via network messages. This project will help you understand hierarchical file systems, socket programming, client-server systems, and network protocols, and it will give you experience building a substantial multi-threaded program with fine-grained locking.In this project, you will implement a multi-threaded network file server. Clients that use your file server will interactDONEDONEDONEDONE";
 
     char readdata[FS_BLOCKSIZE];
     int status;
@@ -46,10 +47,10 @@ int main(int argc, char *argv[]) {
     // assert(!status);
 
     // error: write request to root
-    status = fs_writeblock("user1", "/dir", 0, writedata);
+    status = fs_writeblock("user1", "/dir", 0, writedata1);
     // assert(!status);
 
-    status = fs_writeblock("user1", "/dir/file", 0, writedata);
+    status = fs_writeblock("user1", "/dir/file", 0, writedata1);
     // assert(!status);
 
     // error: read block offset out of range
@@ -57,17 +58,20 @@ int main(int argc, char *argv[]) {
     // assert(!status);
 
     // error: write request block offset out of range
-    status = fs_writeblock("user1", "/dir/file", 2, writedata);
+    status = fs_writeblock("user1", "/dir/file", 2, writedata1);
+    // assert(!status);
+
+    status = fs_writeblock("user1", "/dir/file", 1, writedata2);
     // assert(!status);
     
     // error: write request w/o user permission
-    status = fs_writeblock("user2", "/dir/file", 0, writedata);
+    status = fs_writeblock("user2", "/dir/file", 0, writedata1);
     // assert(!status);
 
-    status = fs_writeblock("user1", "/dir/file", 0, writedata);
+    status = fs_writeblock("user1", "/dir/file", 0, writedata1);
     // assert(!status);
 
-    status = fs_writeblock("user1", "/dir/file", 1, writedata);
+    status = fs_writeblock("user1", "/dir/file", 1, writedata1);
     // assert(!status);
 
     // error: read request w/o user permission
@@ -93,9 +97,8 @@ int main(int argc, char *argv[]) {
     status = fs_create("user1", "/dir/eecs281/midterm", 'f');
     // assert(!status);
 
-    status = fs_writeblock("user1", "/dir/eecs281/midterm", 0, writedata);
+    status = fs_writeblock("user1", "/dir/eecs281/midterm", 0, writedata2);
     // assert(!status);
-
 
     status = fs_delete("user1", "/dir/eecs281");
     // assert(!status);

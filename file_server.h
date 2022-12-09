@@ -72,12 +72,10 @@ private:
     
     void check_inode_username(fs_inode &cur_inode, std::string username);
 
-    bool check_name_exists_in_dir(fs_inode &inode, std::string name);
+    DirEntryIndex check_name_exists_get_free_direntry(fs_inode &inode, std::string name, fs_direntry* buf_direntries);
 
     void create_inode(fs_inode &cur_inode, int cur_block, std::string username,
-                      std::string name, char type);
-
-    DirEntryIndex get_free_direntryindex(fs_inode inode);
+                      std::string name, char type, DirEntryIndex direntry_ind, fs_direntry* block_direntries);
 
     int get_free_block();
 
