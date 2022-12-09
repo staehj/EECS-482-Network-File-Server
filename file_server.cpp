@@ -18,6 +18,11 @@
 
 
 FileServer::FileServer(int port_number) : block_locks(FS_DISKSIZE) {
+    // initialize block locks
+    for () {
+
+    }
+
     // traverse from root (block 0)
     traverse_fs();
 
@@ -421,7 +426,7 @@ void FileServer::handle_create(std::string request, int connectionfd) {
     names.pop_back();
 
     // check it exists
-    std::unique_lock<std::mutex> cur_lock(block_locks[0]);
+    std::unique_lock<std::mutex> cur_lock(block_locks[0]);  // TODO: should this be placed as soon as a request is received?
     fs_inode cur_inode;
     int cur_block = find_path(names, username, cur_lock, cur_inode);
 
@@ -538,6 +543,12 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
                            std::unique_lock<std::mutex> &cur_lock, fs_inode &cur_inode) {
     // temporary buffers
     fs_direntry buf_direntries [FS_DIRENTRIES];
+    // zero initialize new
+    for (int i = 0; i < FS_DIRENTRIES; ++i) {
+        fs_direntry zero;
+        zero.inode_block = 0;
+        buf_direntries[i] = zero;
+    }
 
     // get root inode
     // Note: we are holding lock for root inode
@@ -650,6 +661,12 @@ void FileServer::traverse_fs() {
     // temporary buffers
     fs_inode buf_inode;
     fs_direntry buf_direntries [FS_DIRENTRIES];
+    // zero initialize new
+    for (int i = 0; i < FS_DIRENTRIES; ++i) {
+        fs_direntry zero;
+        zero.inode_block = 0;
+        buf_direntries[i] = zero;
+    }
 
     // initialize free_blocks_set to all blocks
     std::unordered_set<uint32_t> free_blocks_set;

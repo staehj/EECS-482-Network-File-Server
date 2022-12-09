@@ -2,6 +2,7 @@
 #ifndef _FILE_SERVER_H_
 #define _FILE_SERVER_H_
 
+#include <memory>
 #include <queue>
 #include <string>
 #include <sstream>
