@@ -131,14 +131,12 @@ void receive_data(int connectionfd, int data_len, char* data) {
     // (while not exceeding MAX_MESSAGE_SIZE bytes in total).
     ssize_t rval = recv(connectionfd, data + data_len, FS_BLOCKSIZE - data_len, MSG_WAITALL);
     if (rval == 0) {
-        if (rval == -1) {
         cout_lock.lock();
         std::cout << "Client closed before sending all data\n";
         cout_lock.unlock();
         throw Exception();
     }
     else if (rval == -1) {
-        if (rval == -1) {
         cout_lock.lock();
         std::cout << "Error reading stream message\n";
         cout_lock.unlock();
