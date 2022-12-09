@@ -18,11 +18,6 @@
 
 
 FileServer::FileServer(int port_number) : block_locks(FS_DISKSIZE) {
-    // initialize block locks
-    for () {
-
-    }
-
     // traverse from root (block 0)
     traverse_fs();
 
@@ -489,11 +484,11 @@ void FileServer::handle_delete(std::string request, int connectionfd) {
     int target_inode_block = get_target_inode_block(cur_inode, new_name, direntry_index,
                                                     buf_direntries);
 
+    fs_inode target_inode;
     // grab lock of target inode
     std::unique_lock<std::mutex> target_lock(block_locks[target_inode_block]);
 
     // read inode from disk
-    fs_inode target_inode;
     disk_readblock(target_inode_block, &target_inode);
 
     // if directory, it must be empty
@@ -587,10 +582,12 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
 
                 // check if cur_name is found
                 if (std::string(buf_direntries[j].name) == cur_name) {
-                    // get lock of this inode
                     next_inode = buf_direntries[j].inode_block;
-                    std::unique_lock<std::mutex> next_lock(block_locks[next_inode]);
-                    cur_lock.swap(next_lock);
+                    { // needed for RAII
+                        // get lock of this inode
+                        std::unique_lock<std::mutex> next_lock(block_locks[next_inode]);
+                        cur_lock.swap(next_lock);
+                    }
 
                     // update cur_inode
                     disk_readblock(next_inode, &cur_inode);
@@ -683,11 +680,13 @@ void FileServer::traverse_fs() {
         free_blocks_set.erase(target);
 
         // read inode
+        // we can assume initial file systems are valid
         disk_readblock(target, &buf_inode);
 
-        // parse all direntries blocks from inode
+        // parse all direntries/data blocks from inode
         for (uint32_t i = 0; i < buf_inode.size; ++i) {
             target = buf_inode.blocks[i];
+            free_blocks_set.erase(target);
 
             // cur inode is directory
             if (buf_inode.type == 'd') {
@@ -702,10 +701,6 @@ void FileServer::traverse_fs() {
                     }
                     next_inodes.push(buf_direntries[j].inode_block);
                 }
-            }
-            // cur inode is file
-            else {
-                free_blocks_set.erase(target);
             }
         }
     }
