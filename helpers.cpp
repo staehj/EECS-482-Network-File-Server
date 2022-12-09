@@ -105,7 +105,7 @@ int receive_until_null(int connectionfd, char* buf) {
             perror("Error: received more bytes than maximum allowed before NULL\n");
             throw Exception();
         }
-        for (; i < recvd; ++i) {
+        for (; (size_t) i < recvd; ++i) {
             if (buf[i] == '\0') {
                 return recvd;
             }

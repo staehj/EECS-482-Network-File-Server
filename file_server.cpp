@@ -117,7 +117,7 @@ int FileServer::handle_message(int connectionfd) {
         }
 
         // receive_data
-        if (data_len < FS_BLOCKSIZE) {
+        if ((unsigned int) data_len < FS_BLOCKSIZE) {
             receive_data(connectionfd, data_len, data);
         }
 
@@ -215,7 +215,7 @@ std::string FileServer::check_pathname(std::stringstream &msg_ss) {
 std::string FileServer::check_block(std::stringstream &msg_ss) {
     int block;
     if (msg_ss >> block) {
-        if (block < 0 || block >= FS_DISKSIZE) {
+        if (block < 0 || (unsigned int) block >= FS_DISKSIZE) {
             std::cerr << "Error: invalid block: " << block << "\n";
             throw Exception();
         }
@@ -245,8 +245,8 @@ std::string FileServer::check_type(std::stringstream &msg_ss) {
 // TODO: Remove debug couts before submit
 void FileServer::handle_request(RequestType type, std::string request, const char* data,
                                 int connectionfd) {
-    std::cout << "------------------------------------\n";
-    std::cout << "REQUEST: " << request << '\n';
+    // std::cout << "------------------------------------\n";
+    // std::cout << "REQUEST: " << request << '\n';
     switch(type) {
         case RequestType::READ:
             assert(data == nullptr);
@@ -288,7 +288,7 @@ void FileServer::handle_read(std::string request, int connectionfd) {
     check_inode_type(cur_inode, 'f');
 
     // check that block is valid
-    if (block < 0 || block >= cur_inode.size) {
+    if (block < 0 || (uint32_t) block >= cur_inode.size) {
         std::cerr << "Error: block " << block << " was out of range\n";
         throw Exception();
     }
@@ -317,18 +317,17 @@ void FileServer::handle_write(std::string request, const char* data, int connect
     std::unique_lock<std::mutex> cur_lock(block_locks[0]);
     fs_inode cur_inode;
     int cur_block = find_path(names, username, cur_lock, cur_inode);
-
     // check that inode is file
     check_inode_type(cur_inode, 'f');
 
     // check that block is valid
-    if (block < 0 || block > cur_inode.size) {
+    if (block < 0 || (uint32_t) block > cur_inode.size) {
         std::cerr << "Error: block " << block << " was out of range\n";
         throw Exception();
     }
 
     // writing to block immediately after end of file
-    if (block == cur_inode.size) {
+    if ((uint32_t) block == cur_inode.size) {
         // check inode size is less than FS_MAXFILEBLOCKS
         if (cur_inode.size >= FS_MAXFILEBLOCKS) {
             std::cerr << "Error: inode ran out of blocks (>124)\n";
@@ -448,7 +447,7 @@ void FileServer::handle_delete(std::string request, int connectionfd) {
 
     // free all blocks used by target_inode
     // Note: if directory, this will not be entered
-    for (int i = 0; i < target_inode.size; ++i) {
+    for (int i = 0; (uint32_t) i < target_inode.size; ++i) {
         add_free_block(target_inode.blocks[i]);
     }
 
@@ -508,14 +507,14 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
 
         found = false;
         // search block in cur_inode for direntry with name cur_name
-        for (int i = 0; i < cur_inode.size; ++i) {
+        for (int i = 0; (uint32_t) i < cur_inode.size; ++i) {
             int cur_block = cur_inode.blocks[i];
 
             // read direntries from block
             disk_readblock(cur_block, &buf_direntries);
 
             // store all inode blocks from direntries
-            for (int j = 0; j < FS_DIRENTRIES; ++j) {
+            for (int j = 0; (unsigned int) j < FS_DIRENTRIES; ++j) {
                 // unused directory
                 if (buf_direntries[j].inode_block == 0) {
                     continue;
@@ -540,7 +539,7 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
             }
 
             if (found) {
-                continue;
+                break;
             }
         }
     }
@@ -554,9 +553,8 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
 }
 
 void FileServer::decompose_path(std::deque<std::string> &names, std::string pathname) {
-
     std::string name;
-    for (int i = 1; i < pathname.length(); i++) {
+    for (size_t i = 1; i < pathname.length(); i++) {
         if (pathname[i] != '/') {
             name += pathname[i];
         }
@@ -612,7 +610,7 @@ void FileServer::traverse_fs() {
                 disk_readblock(target, &buf_direntries);
 
                 // store all inode blocks from direntries
-                for (int j = 0; j < FS_DIRENTRIES; ++j) {
+                for (unsigned int j = 0; j < FS_DIRENTRIES; ++j) {
                     // unused directory
                     if (buf_direntries[j].inode_block == 0) {
                         continue;
@@ -654,14 +652,14 @@ DirEntryIndex FileServer::check_name_exists_get_free_direntry(fs_inode &inode, s
     bool free_found = false;
     
     // iterate through blocks
-    for (int i = 0; i < inode.size; ++i) {
+    for (int i = 0; (uint32_t) i < inode.size; ++i) {
         int block = inode.blocks[i];
 
         // read direntries from block
         disk_readblock(block, buf_direntries);
 
         // store all inode blocks from direntries
-        for (int j = 0; j < FS_DIRENTRIES; ++j) {
+        for (int j = 0; (unsigned int) j < FS_DIRENTRIES; ++j) {
             // unused directory
             if (buf_direntries[j].inode_block == 0) {
                 if (!free_found) {
@@ -695,7 +693,7 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
     }
 
     // new block was created for direntry
-    if (cur_inode.size == ind.block_index) {
+    if (cur_inode.size == (uint32_t) ind.block_index) {
         // check inode size is less than FS_MAXFILEBLOCKS
         if (cur_inode.size >= FS_MAXFILEBLOCKS) {
             std::cerr << "Error: inode ran out of blocks (>124)\n";
@@ -708,8 +706,12 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
         cur_inode.blocks[ind.block_index] = ind.block;
         cur_inode.size++;
 
-        // zero initialize new 
-        memset(block_direntries, 0, sizeof(FS_BLOCKSIZE));
+        // zero initialize new
+        for (int i = 0; i < FS_DIRENTRIES; ++i) {
+            fs_direntry zero;
+            zero.inode_block = 0;
+            block_direntries[i] = zero;
+        }
     }
 
     // create new inode
@@ -756,14 +758,14 @@ int FileServer::get_target_inode_block(fs_inode &inode, std::string name,
                                        DirEntryIndex &direntry_ind,
                                        fs_direntry* buf_direntries) {
     // iterate through blocks
-    for (int i = 0; i < inode.size; ++i) {
+    for (int i = 0; (uint32_t) i < inode.size; ++i) {
         int block = inode.blocks[i];
 
         // read direntries from block
         disk_readblock(block, buf_direntries);
 
         // store all inode blocks from direntries
-        for (int j = 0; j < FS_DIRENTRIES; ++j) {
+        for (int j = 0; (unsigned int) j < FS_DIRENTRIES; ++j) {
             // unused directory
             if (buf_direntries[j].inode_block == 0) {
                 continue;
@@ -795,7 +797,7 @@ void FileServer::check_directory_empty(fs_inode &inode) {
 
 int FileServer::get_direntry_count(fs_direntry* buf_direntries) {
     int count = 0;
-    for (int i = 0; i < FS_DIRENTRIES; ++i) {
+    for (unsigned int i = 0; i < FS_DIRENTRIES; ++i) {
         if (buf_direntries[i].inode_block != 0) {
             ++count;
         }
@@ -807,7 +809,7 @@ int FileServer::get_direntry_count(fs_direntry* buf_direntries) {
 void FileServer::fix_inode(fs_inode &inode, int target) {
     // decrement inode size
     --inode.size;
-    for (int i = target; i < inode.size; ++i) {
+    for (uint32_t i = target; i < inode.size; ++i) {
         inode.blocks[i] = inode.blocks[i+1];
     }
 }

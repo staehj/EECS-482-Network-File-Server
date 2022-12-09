@@ -1,19 +1,18 @@
 #include <iostream>
 #include <cassert>
 #include <cstdlib>
-#include <stdlib.h>
 #include "fs_client.h"
-
-#include <string>
 
 using std::cout;
 
-int main(int argc, char *argv[]) {
-    char *server;
+// make 9 directories and delete 1
+
+int main(int argc, char* argv[]) {
+    char* server;
     int server_port;
 
-    const char *writedata1 = "In this project, you will implement a multi-threaded network file server. Clients that use your file server will interact with it via network messages. This project will help you understand hierarchical file systems, socket programming, client-server systems, and network protocols, and it will give you experience building a substantial multi-threaded program with fine-grained locking.In this project, you will implement a multi-threaded network file server. Clients that use your file server will interactDONE";
-    const char *writedata2 = "In this project, you will implement a multi-threaded network file server. Clients that use your file server will interact with it via network messages. This project will help you understand hierarchical file systems, socket programming, client-server systems, and network protocols, and it will give you experience building a substantial multi-threaded program with fine-grained locking.In this project, you will implement a multi-threaded network file server. Clients that use your file server will interactDONEDONEDONEDONE";
+    const char* writedata1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    // const char* writedata2 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     char readdata[FS_BLOCKSIZE];
     int status;
@@ -27,14 +26,21 @@ int main(int argc, char *argv[]) {
 
     fs_clientinit(server, server_port);
 
-    status = fs_create("user1", "/dir", 'd');
-    // assert(!status);
+    fs_create("user1", "/dir", 'd');
 
-    for (int i = 0; i < 8 * 124; ++i) {
-        status = fs_create("user1", std::string(std::string("/dir/")+std::to_string(i)).c_str(), 'd');
-    }
+    fs_create("user2", "/dir/file", 'f'); // error
 
+    fs_create("user1", "/dir/file", 'f');
 
-    status = fs_create("user1", "/dir/fail", 'f');
-    // assert(!status);
+    fs_readblock("user1", "/dir/file", 0, readdata); // error
+
+    fs_writeblock("user1", "/dir/file", 0, writedata1);
+
+    fs_readblock("user1", "/dir/file", 0, readdata);
+
+    fs_writeblock("user1", "/dir/file", 1, writedata1);
+
+    fs_readblock("user1", "/dir/file", 1, readdata);
+
+    fs_readblock("user2", "/dir/file", 1, readdata); // error
 }

@@ -1,5 +1,3 @@
-
-
 #include <iostream>
 #include <cassert>
 #include <cstdlib>
@@ -7,14 +5,13 @@
 
 using std::cout;
 
-// make 9 directories and delete 1
+// jjamppong
 
 int main(int argc, char* argv[]) {
     char* server;
     int server_port;
 
-    const char* writedata1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    // const char* writedata2 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const char* writedata = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     char readdata[FS_BLOCKSIZE];
     int status;
@@ -28,36 +25,69 @@ int main(int argc, char* argv[]) {
 
     fs_clientinit(server, server_port);
 
+    status = fs_create("user1", "/file_r1", 'f');
+
+    status = fs_create("user1", "/file_r2", 'f');
+
+    status = fs_writeblock("user1", "/file_r1", 0, writedata);
+
+    status = fs_writeblock("user2", "/file_r1", 0, writedata);
+
+    status = fs_writeblock("user1", "/file_r1", 0, writedata);
+
+    status = fs_writeblock("user1", "/file_r1", 1, writedata);
+    
+    status = fs_writeblock("user1", "/file_r1", 2, writedata);
+    
+    status = fs_readblock("user2", "/dir/file", 0, readdata);
+    
+    status = fs_readblock("user2", "/dir/file", 1, readdata);
+
+    status = fs_readblock("user1", "/dir/file", 3, readdata);
+
+    status = fs_readblock("user1", "/dir/file", 2, readdata);
+
+    status = fs_readblock("user1", "/dir/file", 1, readdata);
+
+    status = fs_readblock("user1", "/dir/file", 0, readdata);
+
+    status = fs_delete("user1", "/file_r1");
+
+    status = fs_delete("user1", "/file_r2");
+
+    //
+
     status = fs_create("user1", "/dir", 'd');
-    // assert(!status);
 
-    status = fs_create("user1", "/dir/dir1", 'd');
-    // assert(!status);
+    status = fs_create("user1", "/dir/dir1-1", 'd');
 
-    status = fs_create("user1", "/dir/dir2", 'd');
-    // assert(!status);
+    status = fs_create("user1", "/dir/file1-1", 'f');
 
-    status = fs_create("user1", "/dir/dir3", 'd');
-    // assert(!status);
+    status = fs_create("user1", "/dir/file1-2", 'f');
 
-    status = fs_create("user1", "/dir/dir4", 'd');
-    // assert(!status);
+    status = fs_create("user1", "/dir/dir1-2", 'd');
 
-    status = fs_create("user1", "/dir/dir5", 'd');
-    // assert(!status);
+    status = fs_create("user1", "/dir/dir1-3", 'd');
 
-    status = fs_create("user1", "/dir/dir6", 'd');
-    // assert(!status);
+    status = fs_create("user1", "/dir/dir1-4", 'd');
 
-    status = fs_create("user1", "/dir/dir7", 'd');
-    // assert(!status);
+    status = fs_create("user1", "/dir/dir1-5", 'd');
 
-    status = fs_create("user1", "/dir/dir8", 'd');
-    // assert(!status);
+    status = fs_create("user1", "/dir/dir1-6", 'd');
 
-    status = fs_create("user1", "/dir/dir9", 'd');
-    // assert(!status);
+    status = fs_create("user1", "/dir/dir1-7", 'd');
 
-    status = fs_delete("user1", "/dir/dir9");
-    // assert(!status);
+    status = fs_writeblock("user1", "/dir/file1-1", 0, writedata);
+
+    status = fs_writeblock("user1", "/dir/file1-1", 1, writedata);
+
+    status = fs_writeblock("user1", "/dir/file1-1", 2, writedata);
+
+    status = fs_writeblock("user1", "/dir/file1-1", 1, writedata);
+
+    status = fs_writeblock("user1", "/dir/file1-1", 0, writedata);
+
+    status = fs_delete("user1", "/dir/file1-1");
+
+    status = fs_delete("user1", "/dir/file1-2");
 }
