@@ -64,7 +64,9 @@ int get_port_number(int sockfd) {
     struct sockaddr_in addr;
     socklen_t length = sizeof(addr);
     if (getsockname(sockfd, (sockaddr *) &addr, &length) == -1) {
-        perror("Error getting port of socket");
+        cout_lock.lock();
+        std::cout << "Error getting port of socket\n";
+        cout_lock.unlock();
         return -1;
     }
     // Use ntohs to convert from network byte order to host byte order.
@@ -76,8 +78,11 @@ int send_bytes(int connectionfd, const char* msg, size_t message_len) {
 	do {
 		ssize_t n = send(connectionfd, msg + sent, message_len - sent, MSG_NOSIGNAL);
         if (n == -1) {
-            perror("send failed: ");
-            break;  // ignore send failure as per piazza
+            cout_lock.lock();
+            std::cout << "Error: send failed\n";
+            cout_lock.unlock();
+            // break;  // ignore send failure as per piazza
+            throw Exception(); // close connection as per piazza @1594
         }
         sent += n;
 	} while (sent < message_len);
@@ -95,14 +100,18 @@ int receive_until_null(int connectionfd, char* buf) {
         // (while not exceeding MAX_MESSAGE_SIZE bytes in total).
         rval = recv(connectionfd, buf + recvd, MAX_MESSAGE_SIZE - recvd, 0);
         if (rval == -1) {
-            perror("Error reading stream message");
+            cout_lock.lock();
+            std::cout << "Error reading stream message\n";
+            cout_lock.unlock();
             throw Exception();
         }
 
         recvd += rval;
 
         if (recvd > MAX_MESSAGE_SIZE) {
-            perror("Error: received more bytes than maximum allowed before NULL\n");
+            cout_lock.lock();
+            std::cout << "Error: received more bytes than maximum allowed before NULL\n";
+            cout_lock.unlock();
             throw Exception();
         }
         for (; (size_t) i < recvd; ++i) {
@@ -122,11 +131,17 @@ void receive_data(int connectionfd, int data_len, char* data) {
     // (while not exceeding MAX_MESSAGE_SIZE bytes in total).
     ssize_t rval = recv(connectionfd, data + data_len, FS_BLOCKSIZE - data_len, MSG_WAITALL);
     if (rval == 0) {
-        perror("Client closed before sending all data\n");
+        if (rval == -1) {
+        cout_lock.lock();
+        std::cout << "Client closed before sending all data\n";
+        cout_lock.unlock();
         throw Exception();
     }
     else if (rval == -1) {
-        perror("Error reading stream message");
+        if (rval == -1) {
+        cout_lock.lock();
+        std::cout << "Error reading stream message\n";
+        cout_lock.unlock();
         throw Exception();
     }
 }

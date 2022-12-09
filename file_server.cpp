@@ -24,7 +24,9 @@ FileServer::FileServer(int port_number) : block_locks(FS_DISKSIZE) {
     // run server
     port = port_number;
     if (run(30) == -1) {
-        std::cerr << "Error: run failed\n";
+        cout_lock.lock();
+        std::cout << "Error: run failed\n";
+        cout_lock.unlock();
         exit(1);
     }
 }
@@ -33,14 +35,18 @@ int FileServer::run(int queue_size) {
 	// (1) Create socket
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock == -1) {
-		perror("Error opening stream socket");
+        cout_lock.lock();
+        std::cout << "Error opening stream socket\n";
+        cout_lock.unlock();
 		return -1;
 	}
 
 	// (2) Set the "reuse port" socket option
 	int yesval = 1;
 	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yesval, sizeof(yesval)) == -1) {
-		perror("Error setting socket options");
+        cout_lock.lock();
+        std::cout << "Error setting socket options\n";
+        cout_lock.unlock();
 		return -1;
 	}
 
@@ -52,7 +58,9 @@ int FileServer::run(int queue_size) {
 
 	// (3b) Bind to the port.
 	if (bind(sock, (sockaddr *) &addr, sizeof(addr)) == -1) {
-		perror("Error binding stream socket");
+        cout_lock.lock();
+        std::cout << "Error binding stream socket\n";
+        cout_lock.unlock();
 		return -1;
 	}
 
@@ -72,7 +80,9 @@ int FileServer::run(int queue_size) {
 	while (true) {
 		int connectionfd = accept(sock, 0, 0);
 		if (connectionfd == -1) {
-			perror("Error accepting connection");
+            cout_lock.lock();
+            std::cout << "Error accepting connection\n";
+            cout_lock.unlock();
 			return -1;
 		}
 
@@ -84,7 +94,9 @@ void FileServer::thread_start(int connectionfd) {
     // start handle_message through thread
     try {
         if (handle_message(connectionfd) == -1) {
-            perror("Error: handle_connection failed\n");
+            cout_lock.lock();
+            std::cout << "Error: handle_connection failed\n";
+            cout_lock.unlock();
             throw Exception();
         }
     }
@@ -167,7 +179,9 @@ FileServer::RequestType FileServer::parse(std::string msg) {
     }
     else {
         // invalid
-        std::cerr << "Error: invalid request: " << word << "\n";
+        cout_lock.lock();
+        std::cout << "Error: invalid request: " << word << "\n";
+        cout_lock.unlock();
         throw Exception();
     }
 
@@ -176,7 +190,9 @@ FileServer::RequestType FileServer::parse(std::string msg) {
     }
     else {
         // invalid
-        std::cerr << "Error: canonical comparison failed:\n" << msg << "\n";
+        cout_lock.lock();
+        std::cout << "Error: canonical comparison failed:\n" << msg << "\n";
+        cout_lock.unlock();
         throw Exception();
     }
 }
@@ -185,12 +201,16 @@ std::string FileServer::check_username(std::stringstream &msg_ss) {
     std::string username;
     if (msg_ss >> username) {
         if (username.length() > FS_MAXUSERNAME) {
-            std::cerr << "Error: long username: " << username << "\n";
+            cout_lock.lock();
+            std::cout << "Error: long username: " << username << "\n";
+            cout_lock.unlock();
             throw Exception();
         }
     }
     else {
-        std::cerr << "Error: missing username\n";
+        cout_lock.lock();
+        std::cout << "Error: missing username\n";
+        cout_lock.unlock();
         throw Exception();
     }
     return username;
@@ -201,12 +221,16 @@ std::string FileServer::check_pathname(std::stringstream &msg_ss) {
     if (msg_ss >> pathname) {
         if (pathname.length() > FS_MAXPATHNAME
         || pathname[0] != '/' || pathname[pathname.length()-1] == '/') {
-            std::cerr << "Error: invalid pathname: " << pathname << "\n";
+            cout_lock.lock();
+            std::cout << "Error: invalid pathname: " << pathname << "\n";
+            cout_lock.unlock();
             throw Exception();
         }
     }
     else {
-        std::cerr << "Error: missing pathname\n";
+        cout_lock.lock();
+        std::cout << "Error: missing pathname\n";
+        cout_lock.unlock();
         throw Exception();
     }
     return pathname;
@@ -216,12 +240,16 @@ std::string FileServer::check_block(std::stringstream &msg_ss) {
     int block;
     if (msg_ss >> block) {
         if (block < 0 || (unsigned int) block >= FS_DISKSIZE) {
-            std::cerr << "Error: invalid block: " << block << "\n";
+            cout_lock.lock();
+            std::cout << "Error: invalid block: " << block << "\n";
+            cout_lock.unlock();
             throw Exception();
         }
     }
     else {
-        std::cerr << "Error: missing block\n";
+        cout_lock.lock();
+        std::cout << "Error: missing block\n";
+        cout_lock.unlock();
         throw Exception();
     }
     return std::to_string(block);
@@ -231,12 +259,16 @@ std::string FileServer::check_type(std::stringstream &msg_ss) {
     char type;
     if (msg_ss >> type) {
         if (type != 'f' && type != 'd') {
-            std::cerr << "Error: invalid type: " << type << "\n";
+            cout_lock.lock();
+            std::cout << "Error: invalid type: " << type << "\n";
+            cout_lock.unlock();
             throw Exception();
         }
     }
     else {
-        std::cerr << "Error: missing type\n";
+        cout_lock.lock();
+        std::cout << "Error: missing type\n";
+        cout_lock.unlock();
         throw Exception();
     }
     return std::string(1, type);
@@ -264,7 +296,9 @@ void FileServer::handle_request(RequestType type, std::string request, const cha
             handle_delete(request, connectionfd);
             break;
         default:
-            std::cerr << "Error: this should never print...\n";
+            cout_lock.lock();
+            std::cout << "Error: this should never print...\n";
+            cout_lock.unlock();
             throw Exception();
     }
 }
@@ -289,7 +323,9 @@ void FileServer::handle_read(std::string request, int connectionfd) {
 
     // check that block is valid
     if (block < 0 || (uint32_t) block >= cur_inode.size) {
-        std::cerr << "Error: block " << block << " was out of range\n";
+        cout_lock.lock();
+        std::cout << "Error: block " << block << " was out of range\n";
+        cout_lock.unlock();
         throw Exception();
     }
 
@@ -322,7 +358,9 @@ void FileServer::handle_write(std::string request, const char* data, int connect
 
     // check that block is valid
     if (block < 0 || (uint32_t) block > cur_inode.size) {
-        std::cerr << "Error: block " << block << " was out of range\n";
+        cout_lock.lock();
+        std::cout << "Error: block " << block << " was out of range\n";
+        cout_lock.unlock();
         throw Exception();
     }
 
@@ -330,7 +368,9 @@ void FileServer::handle_write(std::string request, const char* data, int connect
     if ((uint32_t) block == cur_inode.size) {
         // check inode size is less than FS_MAXFILEBLOCKS
         if (cur_inode.size >= FS_MAXFILEBLOCKS) {
-            std::cerr << "Error: inode ran out of blocks (>124)\n";
+            cout_lock.lock();
+            std::cout << "Error: inode ran out of blocks (>124)\n";
+            cout_lock.unlock();
             throw Exception();
         }
 
@@ -370,7 +410,9 @@ void FileServer::handle_create(std::string request, int connectionfd) {
     decompose_path(names, pathname);
 
     if (names.empty()) {
-        std::cerr << "Error: user tried to create root directory\n";
+        cout_lock.lock();
+        std::cout << "Error: user tried to create root directory\n";
+        cout_lock.unlock();
         throw Exception();
     }
 
@@ -398,11 +440,6 @@ void FileServer::handle_create(std::string request, int connectionfd) {
     DirEntryIndex direntry_ind = check_name_exists_get_free_direntry(cur_inode, new_name,
                                                                      block_direntries);
 
-    std::cout << "DirEntryIndex info:\n";
-    std::cout << "block: " << direntry_ind.block << '\n';
-    std::cout << "block_index: " << direntry_ind.block_index << '\n';
-    std::cout << "direntry_offset: " << direntry_ind.direntry_offset << '\n';
-
     // create new thing (file or directory)
     create_inode(cur_inode, cur_block, username, new_name, type, direntry_ind, block_direntries);
 
@@ -420,7 +457,9 @@ void FileServer::handle_delete(std::string request, int connectionfd) {
     decompose_path(names, pathname);
 
     if (names.empty()) {
-        std::cerr << "Error: user tried to delete root directory\n";
+        cout_lock.lock();
+        std::cout << "Error: user tried to delete root directory\n";
+        cout_lock.unlock();
         throw Exception();
     }
 
@@ -557,18 +596,21 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
                 break;
             }
         }
-        // CHANGED FROM SUBMIT
-        // if (!found) {
-        //     std::cerr << "Error: pathname not found\n";
-        //     throw Exception();
-        // }
+        if (!found) {
+            cout_lock.lock();
+            std::cout << "Error: pathname not found\n";
+            cout_lock.unlock();
+            throw Exception();
+        }
     }
 
     if (found) {
         return next_inode;
     }
 
-    std::cerr << "Error: pathname not found\n";
+    cout_lock.lock();
+    std::cout << "Error: pathname not found\n";
+    cout_lock.unlock();
     throw Exception();
 }
 
@@ -580,11 +622,15 @@ void FileServer::decompose_path(std::deque<std::string> &names, std::string path
         }
         else {
             if (name == "") {
-                std::cerr << "Error: path had consecutive /s\n";
+                cout_lock.lock();
+                std::cout << "Error: path had consecutive /s\n";
+                cout_lock.unlock();
                 throw Exception();
             }
             if (name.length() > FS_MAXFILENAME) {
-                std::cerr << "Error: file name too long (>59)\n";
+                cout_lock.lock();
+                std::cout << "Error: file name too long (>59)\n";
+                cout_lock.unlock();
                 throw Exception();
             }
             names.push_back(name);
@@ -592,7 +638,9 @@ void FileServer::decompose_path(std::deque<std::string> &names, std::string path
         }
     }
     if (name.length() > FS_MAXFILENAME) {
-        std::cerr << "Error: file name too long (>59)\n";
+        cout_lock.lock();
+        std::cout << "Error: file name too long (>59)\n";
+        cout_lock.unlock();
         throw Exception();
     }
     names.push_back(name);
@@ -652,16 +700,20 @@ void FileServer::traverse_fs() {
 
 void FileServer::check_inode_type(fs_inode &cur_inode, char type) {
     if (cur_inode.type != type) {
-        std::cerr << "Error: inode was type " << cur_inode.type << ", client sent "
+        cout_lock.lock();
+        std::cout << "Error: inode was type " << cur_inode.type << ", client sent "
                   << type << '\n';
+        cout_lock.unlock();
         throw Exception();
     }
 }
 
 void FileServer::check_inode_username(fs_inode &cur_inode, std::string username) {
     if (std::string(cur_inode.owner) != username && std::string(cur_inode.owner) != "") {
-        std::cerr << "Error: inode had owner " << cur_inode.owner << ", client sent "
+        cout_lock.lock();
+        std::cout << "Error: inode had owner " << cur_inode.owner << ", client sent "
                   << username << '\n';
+        cout_lock.unlock();
         throw Exception();
     }
 }
@@ -704,7 +756,9 @@ DirEntryIndex FileServer::check_name_exists_get_free_direntry(fs_inode &inode, s
 
             // check if cur_name is found
             if (std::string(buf_direntries[j].name) == name) {
-                std::cerr << "Error: in CREATE, name " << name << " already existed\n";
+                cout_lock.lock();
+                std::cout << "Error: in CREATE, name " << name << " already existed\n";
+                cout_lock.unlock();
                 throw Exception();
             }
         }
@@ -729,7 +783,9 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
     if (cur_inode.size == (uint32_t) ind.block_index) {
         // check inode size is less than FS_MAXFILEBLOCKS
         if (cur_inode.size >= FS_MAXFILEBLOCKS) {
-            std::cerr << "Error: inode ran out of blocks (>124)\n";
+            cout_lock.lock();
+            std::cout << "Error: inode ran out of blocks (>124)\n";
+            cout_lock.unlock();
             throw Exception();
         }
 
@@ -774,7 +830,9 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
 
 int FileServer::get_free_block() {
     if (free_blocks.empty()) {
-        std::cerr << "Error: no free block remaining\n";
+        cout_lock.lock();
+        std::cout << "Error: no free block remaining\n";
+        cout_lock.unlock();
         throw Exception();
     }
 
@@ -815,7 +873,9 @@ int FileServer::get_target_inode_block(fs_inode &inode, std::string name,
     }
 
     // not found
-    std::cerr << "Error: in DELETE, " << name << " does not exist\n";
+    cout_lock.lock();
+    std::cout << "Error: in DELETE, " << name << " does not exist\n";
+    cout_lock.unlock();
     throw Exception();
 }
 
@@ -823,7 +883,9 @@ void FileServer::check_directory_empty(fs_inode &inode) {
     assert(inode.type == 'd');
 
     if (inode.size != 0) {
-        std::cerr << "Error: delete target was not empty\n";
+        cout_lock.lock();
+        std::cout << "Error: delete target was not empty\n";
+        cout_lock.unlock();
         throw Exception();
     }
 }
