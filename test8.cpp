@@ -74,12 +74,12 @@ int main(int argc, char* argv[]) {
     fs_delete("user1", "/dir/a5");
     fs_delete("user1", "/dir/b5");
 
-    fs_create("user1", "/dir/x1", 'd');
-    fs_create("user1", "/dir/x2", 'd');
-    fs_create("user1", "/dir/x3", 'd');
-    fs_create("user1", "/dir/x4", 'd');
-    fs_create("user1", "/dir/x5", 'd');
-    fs_create("user1", "/dir/x6", 'd');
-    fs_create("user1", "/dir/x7", 'd');
-    fs_create("user1", "/dir/x8", 'd');
+    fs_create("user1", "/dir/x1", 'd');  // 
+    // fs_create("user1", "/dir/x2", 'd');
+    // fs_create("user1", "/dir/x3", 'd');
+    // fs_create("user1", "/dir/x4", 'd');
+    // fs_create("user1", "/dir/x5", 'd');
+    // fs_create("user1", "/dir/x6", 'd');
+    // fs_create("user1", "/dir/x7", 'd');
+    // fs_create("user1", "/dir/x8", 'd');
 }

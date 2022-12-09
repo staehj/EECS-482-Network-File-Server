@@ -91,7 +91,7 @@ private:
     void fix_inode(fs_inode &inode, int target);
 
     std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<uint32_t> >
-        free_blocks;
+        free_blocks;  // TODO?: lock required?
     std::vector<std::mutex> block_locks;
     int port;
 };

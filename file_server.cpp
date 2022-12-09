@@ -387,11 +387,21 @@ void FileServer::handle_create(std::string request, int connectionfd) {
     check_inode_type(cur_inode, 'd');
 
     fs_direntry block_direntries [FS_DIRENTRIES];
-    memset(block_direntries, 0, sizeof(block_direntries));
+    // zero initialize new
+    for (int i = 0; i < FS_DIRENTRIES; ++i) {
+        fs_direntry zero;
+        zero.inode_block = 0;
+        block_direntries[i] = zero;
+    }
 
     // check if file/dir with name new_name already exists
     DirEntryIndex direntry_ind = check_name_exists_get_free_direntry(cur_inode, new_name,
                                                                      block_direntries);
+
+    std::cout << "DirEntryIndex info:\n";
+    std::cout << "block: " << direntry_ind.block << '\n';
+    std::cout << "block_index: " << direntry_ind.block_index << '\n';
+    std::cout << "direntry_offset: " << direntry_ind.direntry_offset << '\n';
 
     // create new thing (file or directory)
     create_inode(cur_inode, cur_block, username, new_name, type, direntry_ind, block_direntries);
@@ -426,7 +436,12 @@ void FileServer::handle_delete(std::string request, int connectionfd) {
     // get target inode block number
     DirEntryIndex direntry_index;
     fs_direntry buf_direntries [FS_DIRENTRIES];
-    memset(buf_direntries, 0, sizeof(buf_direntries));
+    // zero initialize new
+    for (int i = 0; i < FS_DIRENTRIES; ++i) {
+        fs_direntry zero;
+        zero.inode_block = 0;
+        buf_direntries[i] = zero;
+    }
     int target_inode_block = get_target_inode_block(cur_inode, new_name, direntry_index,
                                                     buf_direntries);
 
@@ -437,7 +452,7 @@ void FileServer::handle_delete(std::string request, int connectionfd) {
     fs_inode target_inode;
     disk_readblock(target_inode_block, &target_inode);
 
-    // if directory, it is empty
+    // if directory, it must be empty
     if (target_inode.type == 'd') {
         check_directory_empty(target_inode);
     }
@@ -542,6 +557,11 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
                 break;
             }
         }
+        // CHANGED FROM SUBMIT
+        // if (!found) {
+        //     std::cerr << "Error: pathname not found\n";
+        //     throw Exception();
+        // }
     }
 
     if (found) {
@@ -646,8 +666,16 @@ void FileServer::check_inode_username(fs_inode &cur_inode, std::string username)
     }
 }
 
-DirEntryIndex FileServer::check_name_exists_get_free_direntry(fs_inode &inode, std::string name, fs_direntry* buf_direntries) {
+DirEntryIndex FileServer::check_name_exists_get_free_direntry(fs_inode &inode, std::string name, fs_direntry* block_direntries) {
     // first free direntry index
+    fs_direntry buf_direntries [FS_BLOCKSIZE];
+    // zero initialize new
+    for (int i = 0; i < FS_DIRENTRIES; ++i) {
+        fs_direntry zero;
+        zero.inode_block = 0;
+        block_direntries[i] = zero;
+    }
+
     DirEntryIndex free_direntry_index(-1, -1, -1);
     bool free_found = false;
     
@@ -663,6 +691,11 @@ DirEntryIndex FileServer::check_name_exists_get_free_direntry(fs_inode &inode, s
             // unused directory
             if (buf_direntries[j].inode_block == 0) {
                 if (!free_found) {
+                    // copy buf_direntries into block_direntries
+                    for (int i = 0; (unsigned int) i < FS_DIRENTRIES; ++i) {
+                        block_direntries[i] = buf_direntries[i];
+                    }
+
                     free_found = true;
                     free_direntry_index = DirEntryIndex(i, j, block);
                 }
