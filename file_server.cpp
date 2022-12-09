@@ -652,8 +652,6 @@ void FileServer::decompose_path(std::deque<std::string> &names, std::string path
 }
 
 void FileServer::traverse_fs() {
-    free_blocks_lock.lock();
-
     // temporary buffers
     fs_inode buf_inode;
     fs_direntry buf_direntries [FS_DIRENTRIES];
@@ -707,8 +705,6 @@ void FileServer::traverse_fs() {
     for (uint32_t block_num : free_blocks_set) {
         free_blocks.push(block_num);
     }
-
-    free_blocks_lock.unlock();
 }
 
 void FileServer::check_inode_type(fs_inode &cur_inode, char type) {
@@ -845,7 +841,6 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
 }
 
 int FileServer::get_free_block() {
-    free_blocks_lock.lock();
 
     if (free_blocks.empty()) {
         cout_lock.lock();
@@ -857,15 +852,11 @@ int FileServer::get_free_block() {
     int free_block = free_blocks.top();
     free_blocks.pop();
 
-
-    free_blocks_lock.unlock();
     return free_block;
 }
 
 void FileServer::add_free_block(int block) {
-    free_blocks_lock.lock();
     free_blocks.push(block);
-    free_blocks_lock.unlock();
 }
 
 int FileServer::get_target_inode_block(fs_inode &inode, std::string name,

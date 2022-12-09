@@ -95,7 +95,6 @@ private:
     std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<uint32_t> >
         free_blocks;
     std::vector<std::mutex> block_locks;
-    std::mutex free_blocks_lock;
     int port;
 };
 
