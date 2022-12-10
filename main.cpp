@@ -13,7 +13,6 @@ int main(int argc, char *argv[]) {
         port_number = atoi(argv[1]);
     }
     else {
-        // TODO: error, there should be either 1 or 2 args
         exit(1);
     }
 

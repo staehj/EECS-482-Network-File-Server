@@ -50,13 +50,6 @@ int main(int argc, char* argv[]) {
     fs_create("user1", "/file0", 'f');
     fs_create("user1", "/file1", 'f');
     fs_create("user1", "/file2", 'f');
-    fs_create("user1", "/file3", 'f');
-    fs_create("user1", "/file4", 'f');
-    fs_create("user1", "/file5", 'f');
-    fs_create("user1", "/file6", 'f');
-    fs_create("user1", "/file7", 'f');
-    fs_create("user1", "/file8", 'f');
-    fs_create("user1", "/file9", 'f');  // should fail
 
     fs_delete("user1", "/foo0/bar0");
     fs_delete("user1", "/foo0/bar1");

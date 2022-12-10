@@ -29,28 +29,44 @@ int main(int argc, char* argv[]) {
 
     fs_clientinit(server, server_port);
 
-    fs_create("user1", "/file", 'f');
+    // ///// init code
+    // for (int i = 0; i < 124 * 8; ++i) {
+    //     fs_create("user1", std::string(std::string("/file")+std::to_string(i)).c_str(), 'f');
+    // }
+    // /////
 
-    for (int i = 0; i < 123; ++i) {
-        fs_writeblock("user1", "/file", i, writedata1);
-    }
+    fs_create("user2", "/failed", 'f');
+    fs_create("user2", "/failed", 'd');
 
-    fs_readblock("user1", "/file", 123, readdata);
+    fs_delete("user1", "/file10");
+    fs_delete("user1", "/file20");
+    fs_delete("user1", "/file30");
+    
+    fs_create("user2", "/new", 'f');
+    fs_create("user2", "/new", 'd');
+    fs_create("user2", "/new1", 'f');
+    fs_create("user2", "/new2", 'd');
+    fs_create("user2", "/new3", 'f');
+    fs_create("user2", "/new4", 'd');
 
-    fs_writeblock("user1", "/file", 123, writedata1);
-    fs_writeblock("user1", "/file", 124, writedata1);
-    fs_writeblock("user1", "/file", 125, writedata1);
-    fs_writeblock("user1", "/file", 60, writedata1);
-    fs_writeblock("user1", "/file", 0, writedata1);
-    fs_writeblock("user1", "/file", -1, writedata1);
-    fs_writeblock("user1", "/file", 4095, writedata1);
+    fs_writeblock("user1", "/file7", 0, writedata1);
+    fs_writeblock("user1", "/file7", 1, writedata1);
+    fs_writeblock("user1", "/file7", 2, writedata1);
 
-    fs_readblock("user1", "/file", 124, readdata);
-    fs_readblock("user1", "/file", 0, readdata);
-    fs_readblock("user1", "/file", 123, readdata);
-    fs_readblock("user1", "/file", 60, readdata);
-    fs_readblock("user1", "/file", -1, readdata);
-    fs_readblock("user1", "/file", 4095, readdata);
+    fs_writeblock("user1", "/file77", 0, writedata1);
+    fs_writeblock("user1", "/file77", 1, writedata1);
 
-    fs_delete("user1", "/file");
+    fs_delete("user1", "/file7");
+    fs_delete("user1", "/file77");
+
+    fs_delete("user1", "/new1");
+    fs_delete("user1", "/new2");
+
+    fs_create("user1", "/file0", 'f');
+    fs_create("user1", "/file34", 'f');
+
+    fs_delete("user1", "/file3");
+    fs_delete("user1", "/file11");
+    fs_delete("user1", "/file19");
+    fs_delete("user1", "/file27");
 }

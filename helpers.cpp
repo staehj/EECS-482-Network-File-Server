@@ -129,7 +129,8 @@ int receive_until_null(int connectionfd, char* buf) {
 void receive_data(int connectionfd, int data_len, char* data) {
     // Receive as many additional bytes as we can in one call to recv()
     // (while not exceeding MAX_MESSAGE_SIZE bytes in total).
-    ssize_t rval = recv(connectionfd, data + data_len, FS_BLOCKSIZE - data_len, MSG_WAITALL);
+    ssize_t rval = recv(connectionfd, data + data_len, FS_BLOCKSIZE - data_len,
+                        MSG_WAITALL);
     if (rval == 0) {
         cout_lock.lock();
         std::cout << "Client closed before sending all data\n";

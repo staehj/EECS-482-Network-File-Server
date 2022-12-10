@@ -431,7 +431,8 @@ void FileServer::handle_create(std::string request, int connectionfd) {
                                                                      block_direntries);
 
     // create new thing (file or directory)
-    create_inode(cur_inode, cur_block, username, new_name, type, direntry_ind, block_direntries);
+    create_inode(cur_inode, cur_block, username, new_name, type, direntry_ind,
+                 block_direntries);
 
     // send request to client
     send_bytes(connectionfd, request.c_str(), request.size() + 1);
@@ -525,7 +526,8 @@ void FileServer::handle_delete(std::string request, int connectionfd) {
 }
 
 int FileServer::find_path(std::deque<std::string> &names, std::string username,
-                           std::unique_lock<std::mutex> &cur_lock, fs_inode &cur_inode, bool is_CR_or_DE) {
+                          std::unique_lock<std::mutex> &cur_lock, fs_inode &cur_inode,
+                          bool is_CR_or_DE) {
     // temporary buffers
     fs_direntry buf_direntries [FS_DIRENTRIES];
     // zero initialize new
@@ -725,7 +727,8 @@ void FileServer::check_inode_username(fs_inode &cur_inode, std::string username)
     }
 }
 
-DirEntryIndex FileServer::check_name_exists_get_free_direntry(fs_inode &inode, std::string name, fs_direntry* block_direntries) {
+DirEntryIndex FileServer::check_name_exists_get_free_direntry(
+fs_inode &inode, std::string name, fs_direntry* block_direntries) {
     // first free direntry index
     fs_direntry buf_direntries [FS_BLOCKSIZE];
     // zero initialize new
@@ -775,7 +778,8 @@ DirEntryIndex FileServer::check_name_exists_get_free_direntry(fs_inode &inode, s
 
 
 void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string username,
-                              std::string name, char type, DirEntryIndex ind, fs_direntry* block_direntries) {
+                              std::string name, char type, DirEntryIndex ind,
+                              fs_direntry* block_direntries) {
     // get free space for a direntry
     bool cur_inode_changed = false;
 
