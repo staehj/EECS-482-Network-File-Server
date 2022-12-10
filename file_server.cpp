@@ -422,7 +422,7 @@ void FileServer::handle_create(std::string request, int connectionfd) {
 
     fs_direntry block_direntries [FS_DIRENTRIES];
     // zero initialize new
-    for (int i = 0; i < FS_DIRENTRIES; ++i) {
+    for (int i = 0; (unsigned int) i < FS_DIRENTRIES; ++i) {
         fs_direntry zero;
         zero.inode_block = 0;
         block_direntries[i] = zero;
@@ -468,7 +468,7 @@ void FileServer::handle_delete(std::string request, int connectionfd) {
     DirEntryIndex direntry_index;
     fs_direntry buf_direntries [FS_DIRENTRIES];
     // zero initialize new
-    for (int i = 0; i < FS_DIRENTRIES; ++i) {
+    for (int i = 0; (unsigned int) i < FS_DIRENTRIES; ++i) {
         fs_direntry zero;
         zero.inode_block = 0;
         buf_direntries[i] = zero;
@@ -531,7 +531,7 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
     // temporary buffers
     fs_direntry buf_direntries [FS_DIRENTRIES];
     // zero initialize new
-    for (int i = 0; i < FS_DIRENTRIES; ++i) {
+    for (int i = 0; (unsigned int) i < FS_DIRENTRIES; ++i) {
         fs_direntry zero;
         zero.inode_block = 0;
         buf_direntries[i] = zero;
@@ -656,7 +656,7 @@ void FileServer::traverse_fs() {
     fs_inode buf_inode;
     fs_direntry buf_direntries [FS_DIRENTRIES];
     // zero initialize new
-    for (int i = 0; i < FS_DIRENTRIES; ++i) {
+    for (int i = 0; (unsigned int) i < FS_DIRENTRIES; ++i) {
         fs_direntry zero;
         zero.inode_block = 0;
         buf_direntries[i] = zero;
@@ -731,7 +731,7 @@ DirEntryIndex FileServer::check_name_exists_get_free_direntry(fs_inode &inode, s
     // first free direntry index
     fs_direntry buf_direntries [FS_BLOCKSIZE];
     // zero initialize new
-    for (int i = 0; i < FS_DIRENTRIES; ++i) {
+    for (int i = 0; (unsigned int) i < FS_DIRENTRIES; ++i) {
         fs_direntry zero;
         zero.inode_block = 0;
         block_direntries[i] = zero;
@@ -808,7 +808,7 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
         cur_inode.size++;
 
         // zero initialize new
-        for (int i = 0; i < FS_DIRENTRIES; ++i) {
+        for (int i = 0; (unsigned int) i < FS_DIRENTRIES; ++i) {
             fs_direntry zero;
             zero.inode_block = 0;
             block_direntries[i] = zero;

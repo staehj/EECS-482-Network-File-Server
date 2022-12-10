@@ -1,6 +1,8 @@
+
 #include <iostream>
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 
 #include "fs_client.h"
@@ -28,36 +30,15 @@ int main(int argc, char* argv[]) {
 
     fs_clientinit(server, server_port);
 
-    ////// logic for creating full disk
-    // for (int i = 0; i < 120*8; ++i) {
-    //     fs_create("user1", std::string(std::string("/foo")+std::to_string(i)).c_str(), 'd');
-    // }
+    fs_create("user", "/file", 'f');
+    fs_writeblock("user", "/file", 0, writedata1);
+    fs_readblock("user", "/file", 0, readdata);
 
-    // for (int i = 0; i < 120*8; ++i) {
-    //     fs_create("user1", std::string(std::string("/foo0/bar")+std::to_string(i)).c_str(), 'd');
-    // }
+    // assert(strcmp(readdata, writedata1) == 0);
+    for (int i = 0; i < FS_BLOCKSIZE; ++i) {
+        if (readdata[i] != writedata1[i]) {
+            assert(false);
+        }
+    }
 
-    // for (int i = 0; i < 120*8; ++i) {
-    //     fs_create("user1", std::string(std::string("/foo1/hello")+std::to_string(i)).c_str(), 'd');
-    // }
-
-    // for (int i = 0; i < 120*8; ++i) {
-    //     fs_create("user1", std::string(std::string("/foo2/world")+std::to_string(i)).c_str(), 'd');
-    // }
-    ////// -------------------------
-
-    fs_delete("user1", "/foo0/bar0");
-    fs_delete("user1", "/foo0/bar1");
-    fs_delete("user1", "/foo0/bar2");
-    fs_delete("user1", "/foo0/bar3");
-
-    fs_create("user1", "/foo0/file", 'f');
-    fs_create("user1", "/foo0/bar3/file", 'f');
-
-    fs_create("user1", "/foo1/file", 'f');
-    fs_create("user1", "/foo1/hello0/file", 'f');
-
-    fs_create("user1", "/foo2/file", 'f');
-    fs_create("user1", "/foo2/world0/file", 'f');
 }
-

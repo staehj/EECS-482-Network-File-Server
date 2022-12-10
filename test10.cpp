@@ -1,20 +1,28 @@
 #include <iostream>
 #include <cassert>
 #include <cstdlib>
-#include <string>
-
 #include "fs_client.h"
 
 using std::cout;
 
-// make 9 directories and delete 1
-
-int main(int argc, char* argv[]) {
-    char* server;
+int main(int argc, char *argv[]) {
+    char *server;
     int server_port;
 
-    const char* writedata1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    // const char* writedata2 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const char *writedata = "In this project, you will implement a multi-threaded network file server. Clients that use your file server will interact with it via network messages. This project will help you understand hierarchical file systems, socket programming, client-server systems, and network protocols, and it will give you experience building a substantial multi-threaded program with fine-grained locking.";
+    const char *writedata1 = "In this project, you will implement a multi-threaded network file server.";
+    const char *writedata2 = "In this project, you will implement a multi-threaded network file server.";
+    const char *writedata3 = "In this project, you will implement a multi-threaded network file server.";
+    const char *writedata4 = "In this project, you will implement a multi-threaded network file server.";
+    const char *writedata5 = "In this project, you will implement a multi-threaded network file server.";
+    const char *writedata6 = "In this project, you will implement a multi-threaded network file server.";
+    const char *writedata7 = "In this project, you will implement a multi-threaded network file server.";
+    const char *writedata8 = "In this project, you will implement a multi-threaded network file server.";
+    const char *writedata9 = "In this project, you will implement a multi-threaded network file server.";
+    const char *writedata10 = "In this project, you will implement a multi-threaded network file server.";
+    const char *writedata11 = "In this project, you will implement a multi-threaded network file server.";
+    const char *writedata12 = "In this project, you will implement a multi-threaded network file server.";
+
 
     char readdata[FS_BLOCKSIZE];
     int status;
@@ -28,34 +36,65 @@ int main(int argc, char* argv[]) {
 
     fs_clientinit(server, server_port);
 
-    ////// logic for creating full disk
-    // for (int i = 0; i < 120*8; ++i) {
-    //     fs_create("user1", std::string(std::string("/foo")+std::to_string(i)).c_str(), 'd');
-    // }
+    fs_delete("user1", "/dir");
+    // assert(!status);
 
-    // for (int i = 0; i < 120*8; ++i) {
-    //     fs_create("user1", std::string(std::string("/foo0/bar")+std::to_string(i)).c_str(), 'd');
-    // }
+    fs_delete("user2", "/dir/foo/bar");
+    // assert(!status);
 
-    // for (int i = 0; i < 120*8; ++i) {
-    //     fs_create("user1", std::string(std::string("/foo1/hello")+std::to_string(i)).c_str(), 'd');
-    // }
+    fs_delete("user3", "/dir/foo");
+    // assert(!status);
 
-    // for (int i = 0; i < 120*8; ++i) {
-    //     fs_create("user1", std::string(std::string("/foo2/world")+std::to_string(i)).c_str(), 'd');
-    // }
-    ////// -------------------------
+    fs_create("user1", "/dir", 'd');
 
-    fs_create("user1", "/file", 'f');
+    fs_create("user1", "/dir/dir1", 'd');
 
-    fs_create("user1", "/foo0/file", 'f');
-    fs_create("user1", "/foo0/bar0/file", 'f');
+    fs_create("user1", "/dir/dir1/dir2", 'd');
 
-    fs_create("user1", "/foo1/file", 'f');
-    fs_create("user1", "/foo1/hello0/file", 'f');
+    fs_create("user1", "/dir/dir1/dir2", 'd');
 
-    fs_create("user1", "/foo2/file", 'f');
-    fs_create("user1", "/foo2/world0/file", 'f');
+    fs_writeblock("user1", "/dir/dir1/dir2", 0, writedata);
 
+    fs_writeblock("user1", "/dir/dir1/dir2", 2, writedata);
+
+    fs_create("user1", "/dir/dir1/dir2/file", 'f');
+
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 3, writedata);
+
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 0, writedata1);
+
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 1, writedata1);
+
+    fs_readblock("user2", "/dir/dir1/dir2/file", 0, readdata);
+
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 0, writedata2);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 0, writedata3);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 0, writedata4);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 0, writedata5);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 0, writedata6);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 0, writedata7);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 0, writedata8);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 0, writedata9);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 0, writedata10);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 0, writedata11);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 0, writedata12);
+
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 1, writedata2);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 1, writedata3);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 1, writedata4);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 1, writedata5);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 1, writedata6);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 1, writedata7);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 1, writedata8);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 1, writedata9);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 1, writedata10);
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 1, writedata11);
+    fs_delete("user1", "/dir/dir1/dir2/file");
+    fs_writeblock("user1", "/dir/dir1/dir2/file", 1, writedata12);
+
+
+
+
+    
 }
 

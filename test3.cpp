@@ -22,6 +22,4 @@ int main(int argc, char *argv[]) {
     server_port = atoi(argv[2]);
 
     fs_clientinit(server, server_port);
-
-    
 }
