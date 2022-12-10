@@ -1,46 +1,21 @@
+
 #include <iostream>
 #include <cassert>
 #include <cstdlib>
+#include <string>
+
 #include "fs_client.h"
 
 using std::cout;
 
-struct fs_inode {
-    char type;                             // file ('f') or directory ('d')
-    char owner[FS_MAXUSERNAME + 1];        // owner of this file or directory
-    uint32_t size;                         // size of this file or directory
-                                           // in blocks
-    uint32_t blocks[FS_MAXFILEBLOCKS];     // array of data blocks for this
-                                           // file or directory
-};
+// make 9 directories and delete 1
 
-struct fs_direntry {
-    char name[FS_MAXFILENAME + 1];         // name of this file or directory
-    uint32_t inode_block;                  // disk block that stores the inode
-                                          // for this file or directory (0 if
-                                          // this direntry is unused)
-};
-
-int main(int argc, char *argv[]) {
-    char *server;
+int main(int argc, char* argv[]) {
+    char* server;
     int server_port;
 
-    fs_inode write_data;
-    write_data.type = 'd';
-    strcpy(write_data.owner, "user1");
-    write_data.size = 1;
-    write_data.blocks[0] = 1;
-
-    fs_inode write_data2;
-    write_data2.type = 'd';
-    strcpy(write_data2.owner, "user1");
-    write_data2.size = 1;
-    write_data2.blocks[0] = 5;
-
-    fs_direntry write_data3 [8];
-    strcpy(write_data3[0].name, "ghost");
-    write_data3[0].inode_block = 4;
-
+    const char* writedata1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    // const char* writedata2 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     char readdata[FS_BLOCKSIZE];
     int status;
@@ -54,55 +29,55 @@ int main(int argc, char *argv[]) {
 
     fs_clientinit(server, server_port);
 
-    fs_create("user1", "/file", 'f');
+    ////// logic for creating full disk
+    // for (int i = 0; i < 120*8; ++i) {
+    //     fs_create("user1", std::string(std::string("/foo")+std::to_string(i)).c_str(), 'd');
+    // }
 
-    fs_create("user1", "/file/file", 'f');
-    fs_create("user1", "/file/dir", 'd');
+    // for (int i = 0; i < 120*8; ++i) {
+    //     fs_create("user1", std::string(std::string("/foo0/bar")+std::to_string(i)).c_str(), 'd');
+    // }
 
-    fs_delete("user1", "/file/file");
-    fs_delete("user1", "/file/dir");
+    // for (int i = 0; i < 120*8; ++i) {
+    //     fs_create("user1", std::string(std::string("/foo1/hello")+std::to_string(i)).c_str(), 'd');
+    // }
 
-    fs_writeblock("user1", "/file", 0, &write_data);
+    // for (int i = 0; i < 120*8; ++i) {
+    //     fs_create("user1", std::string(std::string("/foo2/world")+std::to_string(i)).c_str(), 'd');
+    // }
+    ////// -------------------------
 
-    fs_create("user1", "/file/file", 'f');
-    fs_create("user1", "/file/dir", 'd');
+    fs_create("user1", "/file0", 'f');
+    fs_create("user1", "/file1", 'f');
+    fs_create("user1", "/file2", 'f');
+    fs_create("user1", "/file3", 'f');
+    fs_create("user1", "/file4", 'f');
+    fs_create("user1", "/file5", 'f');
+    fs_create("user1", "/file6", 'f');
+    fs_create("user1", "/file7", 'f');
+    fs_create("user1", "/file8", 'f');
+    fs_create("user1", "/file9", 'f');  // should fail
 
-    fs_delete("user1", "/file/file");
-    fs_delete("user1", "/file/dir");
+    fs_delete("user1", "/foo0/bar0");
+    fs_delete("user1", "/foo0/bar1");
+    fs_delete("user1", "/foo0/bar2");
+    fs_delete("user1", "/foo0/bar3");
+    fs_delete("user1", "/foo0/bar4");
+    fs_delete("user1", "/foo0/bar5");
+    fs_delete("user1", "/foo0/bar6");
+    fs_delete("user1", "/foo0/bar7");
 
-    fs_writeblock("user1", "/file", 0, &write_data2);
-    fs_readblock("user1", "/file", 0, readdata);
 
-    fs_create("user1", "/file/file", 'f');
-    fs_create("user1", "/file/dir", 'd');
 
-    fs_delete("user1", "/file/file");
-    fs_delete("user1", "/file/dir");
+// ////
+//     fs_create("user1", "/foo0/file", 'f');
+//     fs_create("user1", "/foo0/bar3/file", 'f');
 
-    fs_writeblock("user1", "/file", 0, write_data3);
-    fs_readblock("user1", "/file", 0, readdata);
+//     fs_create("user1", "/foo1/file", 'f');
+//     fs_create("user1", "/foo1/hello0/file", 'f');
 
-    fs_delete("user1", "/file/ghost");
+//     fs_create("user1", "/foo2/file", 'f');
+//     fs_create("user1", "/foo2/world0/file", 'f');
 
-    fs_create("user1", "/file/ghost", 'f');
-    fs_create("user1", "/file/ghost", 'd');
 
-    fs_delete("user1", "/file/ghost");
-
-    fs_writeblock("user1", "/file/ghost", 0, &write_data);
-    fs_readblock("user1", "/file/ghost", 0, readdata);
-
-    fs_delete("user1", "/file/ghost");
-
-    fs_create("user1", "/file", 'd');
-
-    fs_delete("user1", "/file/ghost");
-
-    fs_writeblock("user1", "/file", 0, &write_data);
-    fs_writeblock("user1", "/file", 1, &write_data2);
-    fs_writeblock("user1", "/file", 2, write_data3);
-
-    fs_delete("user1", "/file/ghost");
-
-    fs_delete("user1", "/file");
 }

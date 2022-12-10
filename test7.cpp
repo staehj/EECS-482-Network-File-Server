@@ -1,15 +1,21 @@
+
 #include <iostream>
 #include <cassert>
 #include <cstdlib>
+#include <string>
+
 #include "fs_client.h"
 
 using std::cout;
 
-int main(int argc, char *argv[]) {
-    char *server;
+// make 9 directories and delete 1
+
+int main(int argc, char* argv[]) {
+    char* server;
     int server_port;
 
-    const char *writedata = "In this project, you will implement a multi-threaded network file server. Clients that use your file server will interact with it via network messages. This project will help you understand hierarchical file systems, socket programming, client-server systems, and network protocols, and it will give you experience building a substantial multi-threaded program with fine-grained locking.";
+    const char* writedata1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    // const char* writedata2 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     char readdata[FS_BLOCKSIZE];
     int status;
@@ -23,99 +29,33 @@ int main(int argc, char *argv[]) {
 
     fs_clientinit(server, server_port);
 
-    status = fs_create("user1", "/dir", 'd');
-    // assert(!status);
+    ////// logic for creating full disk
+    // for (int i = 0; i < 120*8; ++i) {
+    //     fs_create("user1", std::string(std::string("/foo")+std::to_string(i)).c_str(), 'd');
+    // }
 
-    // parsing error: / at end of path
-    status = fs_create("user1", "/dir/file/", 'f');
-    // assert(!status);
+    // for (int i = 0; i < 120*8; ++i) {
+    //     fs_create("user1", std::string(std::string("/foo0/bar")+std::to_string(i)).c_str(), 'd');
+    // }
 
-    // parsing error: / not at start of path
-    status = fs_create("user1", "dir/file", 'f');
-    // assert(!status);
+    // for (int i = 0; i < 120*8; ++i) {
+    //     fs_create("user1", std::string(std::string("/foo1/hello")+std::to_string(i)).c_str(), 'd');
+    // }
 
-    // parsing error: username length exceeded
-    status = fs_create("user1user1user1user1user1user1", "dir/file", 'f');
-    // assert(!status);
+    // for (int i = 0; i < 120*8; ++i) {
+    //     fs_create("user1", std::string(std::string("/foo2/world")+std::to_string(i)).c_str(), 'd');
+    // }
+    ////// -------------------------
 
-    status = fs_create("user1", "/dir/file", 'f');
-    // assert(!status);
+    for (int i = 0; i < 10; ++i) {
+        fs_delete("user1", std::string(std::string("/foo2/world")+std::to_string(i)).c_str());
+    }
 
-    // error: different username same directory name
-    status = fs_create("user2", "/dir/file", 'f');
-    // assert(!status);
+    fs_create("user1", "/file0", 'f');
+    fs_create("user1", "/file1", 'f');
+    fs_create("user1", "/file2", 'f');
 
-    // error: write request to root
-    status = fs_writeblock("user1", "/dir", 0, writedata);
-    // assert(!status);
-
-    status = fs_writeblock("user1", "/dir/file", 0, writedata);
-    // assert(!status);
-
-    // error: read block offset out of range
-    status = fs_readblock("user1", "/dir/file", 1, readdata);
-    // assert(!status);
-
-    // error: write request block offset out of range
-    status = fs_writeblock("user1", "/dir/file", 2, writedata);
-    // assert(!status);
-    
-    // error: write request w/o user permission
-    status = fs_writeblock("user2", "/dir/file", 0, writedata);
-    // assert(!status);
-
-    status = fs_writeblock("user1", "/dir/file", 0, writedata);
-    // assert(!status);
-
-    status = fs_writeblock("user1", "/dir/file", 1, writedata);
-    // assert(!status);
-
-    // error: read request w/o user permission
-    status = fs_readblock("user2", "/dir/file", 0, readdata);
-    // assert(!status);
-
-    // error: delete non-existent file
-    status = fs_delete("user1", "/dir/foo");
-    // assert(!status);
-
-    // error: delete file w/o user permission
-    status = fs_delete("user2", "/dir/file");
-    // assert(!status);
-
-    // error: create more than 1 path
-    status = fs_create("user1", "/dir/foo1/foo2", 'd');
-    // assert(!status);
-
-    // error: delete non-empty directory
-    status = fs_create("user1", "/dir/eecs281", 'd');
-    // assert(!status);
-
-    status = fs_create("user1", "/dir/eecs281/midterm", 'f');
-    // assert(!status);
-
-    status = fs_writeblock("user1", "/dir/eecs281/midterm", 0, writedata);
-    // assert(!status);
-
-
-    status = fs_delete("user1", "/dir/eecs281");
-    // assert(!status);
-
-    status = fs_create("user5", "/dir", 'd');
-    // assert(!status);
-
-    status = fs_create("user5", "/dir/file", 'f');
-    // assert(!status);
-
-    // error: parent is file
-    status = fs_create("user5", "/dir/file/file5", 'f');
-    // assert(!status);
-
-    status = fs_create("user5", "/dir/dir5", 'd');
-    // assert(!status);
-
-    status = fs_create("user5", "/dir/dir5/dir55", 'f');
-    // assert(!status);
-
-    status = fs_create("user5", "/dir/dir5/dir55/dir555", 'f');
-    // assert(!status);
+    fs_writeblock("user1", "./file2", 0, writedata1);
+    fs_writeblock("user1", "./file1", 0, writedata1);
+    fs_writeblock("user1", "./file2", 1, writedata1);
 }

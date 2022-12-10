@@ -239,7 +239,7 @@ std::string FileServer::check_pathname(std::stringstream &msg_ss) {
 std::string FileServer::check_block(std::stringstream &msg_ss) {
     int block;
     if (msg_ss >> block) {
-        if (block < 0 || (unsigned int) block >= FS_DISKSIZE) {
+        if (block < 0 || (unsigned int) block >= FS_MAXFILEBLOCKS) {
             cout_lock.lock();
             std::cout << "Error: invalid block: " << block << "\n";
             cout_lock.unlock();
@@ -274,11 +274,9 @@ std::string FileServer::check_type(std::stringstream &msg_ss) {
     return std::string(1, type);
 }
 
-// TODO: Remove debug couts before submit
+
 void FileServer::handle_request(RequestType type, std::string request, const char* data,
                                 int connectionfd) {
-    // std::cout << "------------------------------------\n";
-    // std::cout << "REQUEST: " << request << '\n';
     switch(type) {
         case RequestType::READ:
             assert(data == nullptr);
@@ -783,6 +781,14 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
 
     // check if new block needs to be created for direntry
     if (ind.block == -1) {
+        // check inode size is less than FS_MAXFILEBLOCKS
+        if (cur_inode.size >= FS_MAXFILEBLOCKS) {
+            cout_lock.lock();
+            std::cout << "Error: inode ran out of blocks (>124)\n";
+            cout_lock.unlock();
+            throw Exception();
+        }
+
         ind.block_index = cur_inode.size;
         ind.direntry_offset = 0;
         ind.block = get_free_block();
@@ -790,17 +796,6 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
 
     // new block was created for direntry
     if (cur_inode.size == (uint32_t) ind.block_index) {
-        // check inode size is less than FS_MAXFILEBLOCKS
-        if (cur_inode.size >= FS_MAXFILEBLOCKS) {
-            // free the reserved block
-            add_free_block(ind.block);
-
-            cout_lock.lock();
-            std::cout << "Error: inode ran out of blocks (>124)\n";
-            cout_lock.unlock();
-            throw Exception();
-        }
-
         cur_inode_changed = true;
 
         // if new block assigned, link cur_inode to new block
@@ -841,7 +836,6 @@ void FileServer::create_inode(fs_inode &cur_inode, int cur_block, std::string us
 }
 
 int FileServer::get_free_block() {
-
     if (free_blocks.empty()) {
         cout_lock.lock();
         std::cout << "Error: no free block remaining\n";
