@@ -318,9 +318,6 @@ void FileServer::handle_read(std::string request, int connectionfd) {
     fs_inode cur_inode;
     find_path(names, username, cur_lock, cur_inode, false);
 
-    // check that inode is file
-    check_inode_type(cur_inode, 'f');
-
     // check that block is valid
     if (block < 0 || (uint32_t) block >= cur_inode.size) {
         cout_lock.lock();
@@ -353,8 +350,6 @@ void FileServer::handle_write(std::string request, const char* data, int connect
     std::unique_lock<std::mutex> cur_lock(block_locks[0]);
     fs_inode cur_inode;
     int cur_block = find_path(names, username, cur_lock, cur_inode, false);
-    // check that inode is file
-    check_inode_type(cur_inode, 'f');
 
     // check that block is valid
     if (block < 0 || (uint32_t) block > cur_inode.size) {
@@ -421,7 +416,7 @@ void FileServer::handle_create(std::string request, int connectionfd) {
     names.pop_back();
 
     // check it exists
-    std::unique_lock<std::mutex> cur_lock(block_locks[0]);  // TODO: should this be placed as soon as a request is received?
+    std::unique_lock<std::mutex> cur_lock(block_locks[0]);
     fs_inode cur_inode;
     int cur_block = find_path(names, username, cur_lock, cur_inode, true);
 
@@ -557,11 +552,6 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
         std::string cur_name = names.front();
         names.pop_front();
 
-        // check inode is dir, not file
-        if (!names.empty() || is_CR_or_DE) {
-            check_inode_type(cur_inode, 'd');  ////////
-        }
-
         found = false;
         // search block in cur_inode for direntry with name cur_name
         for (int i = 0; (uint32_t) i < cur_inode.size; ++i) {
@@ -585,9 +575,19 @@ int FileServer::find_path(std::deque<std::string> &names, std::string username,
                         std::unique_lock<std::mutex> next_lock(block_locks[next_inode]);
                         cur_lock.swap(next_lock);
                     }
-
                     // update cur_inode
+
                     disk_readblock(next_inode, &cur_inode);
+
+                    // check inode is dir, not file
+                    if (is_CR_or_DE || !names.empty()) {
+                        check_inode_type(cur_inode, 'd');
+                    }
+                    // last of path && READ/WRITE
+                    else {
+                        // check that inode is file
+                        check_inode_type(cur_inode, 'f');
+                    }
 
                     // check user permissions for inode
                     check_inode_username(cur_inode, username);
